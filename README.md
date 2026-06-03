@@ -109,7 +109,7 @@ pip install -r requirements.txt
 Run:
 
 ```bash
-python CamelUp.py
+python3 CamelUp.py
 ```
 
 During a turn, players can choose actions such as:
@@ -127,7 +127,7 @@ The game simulates a leg, processes payouts, and displays player results.
 Run the test suite with:
 
 ```bash
-python -m pytest
+python3 -m pytest
 ```
 
 ## Current Scope
