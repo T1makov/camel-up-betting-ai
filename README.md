@@ -87,7 +87,7 @@ The AI can then recommend the bet with the highest expected value.
 Clone the repository:
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/camel-up-betting-ai.git
+git clone https://github.com/T1makov/camel-up-betting-ai.git
 cd camel-up-betting-ai
 ```
 
