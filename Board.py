@@ -29,7 +29,7 @@ class Board:
         '''
         self.track[0] = []
         available_camels = list(self.STYLES.keys())
-        for i in range(5):
+        for i in range(len(self.STYLES)):
             camel = random.choice(available_camels) ##Choosing a random camel from the list
             self.track[0].append(camel) ## put the camel on the track
             available_camels.remove(camel) ##remove the camel from the list of avaiable_camels
@@ -90,7 +90,7 @@ class Board:
             Returns:
                 bool - True if all dice have been rolled, False otherwise
         '''
-        if len(self.dice_tents) == 5:
+        if len(self.dice_tents) == len(self.STYLES):
             return True
         return False
 
@@ -145,13 +145,13 @@ class Board:
         dice_string = "Dice Tents: "
         for die in self.dice_tents:
             dice_string+=self.STYLES[die[0]]+str(die[1])+Style.RESET_ALL+" "
-        for i in range (5-len(self.dice_tents)):
+        for i in range(len(self.STYLES) - len(self.dice_tents)):
             dice_string+=Back.WHITE+" "+Style.RESET_ALL+" "
 
         #Camels and Race Track
         board_string += dice_string +"\n"
-        for row in range(4, -1, -1):
-            row_str = [" "]*16
+        for row in range(len(self.STYLES) - 1, -1, -1):
+            row_str = [" "] * self.TRACK_LENGTH
             for i in range(len(self.track)):
                 for camel_place, camel in enumerate(self.track[i]):
                     if camel_place == row:
