@@ -1,4 +1,5 @@
 import { DieFace } from "../components/dice/DieFace";
+import { BettingPanel } from "../components/betting/BettingPanel";
 import {
     useCallback,
     useEffect,
@@ -9,6 +10,7 @@ import {
   import {
     getAdvice,
     getGame,
+    placeBet,
     rollDie,
     startNextLeg,
   } from "../api/client";
@@ -17,6 +19,7 @@ import {
     AdviceItem,
     GameState,
   } from "../types/game";
+
   
   export function GamePage() {
     const { gameId } = useParams<{ gameId: string }>();
@@ -187,6 +190,16 @@ import {
             </section>
   
             <RaceBoard track={game.track} />
+
+            <BettingPanel
+            tickets={game.tickets}
+            disabled={isActing || game.status !== "playing"}
+            onBet={(color) =>
+                void performAction(() =>
+                placeBet(gameId, color),
+                )
+            }
+            />
   
             {advice.length > 0 && (
               <section className="panel">
