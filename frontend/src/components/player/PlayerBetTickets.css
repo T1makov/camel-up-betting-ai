@@ -1,0 +1,50 @@
+.player-card .player-bets {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    margin-top: 0.75rem;
+    overflow-x: auto;
+  }
+  
+  .player-bets__empty {
+    margin: 0.65rem 0 0;
+    color: var(--muted);
+    font-size: 0.72rem;
+  }
+  
+  .player-bet-ticket {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    place-items: center;
+    border-radius: 10px;
+    color: white;
+    font-size: 1.05rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  
+  .player-bet-ticket--r {
+    background: #e53935;
+  }
+  
+  .player-bet-ticket--b {
+    background: #1976d2;
+  }
+  
+  .player-bet-ticket--g {
+    background: #43a047;
+  }
+  
+  .player-bet-ticket--y {
+    color: #3b2d0a;
+    background: #f9b719;
+  }
+  
+  .player-bet-ticket--p {
+    background: #7547b8;
+  }

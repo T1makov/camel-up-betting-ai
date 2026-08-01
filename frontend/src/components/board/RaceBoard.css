@@ -1,0 +1,145 @@
+.race-board {
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 1.25rem;
+    background: rgba(255, 250, 240, 0.94);
+    box-shadow: var(--shadow);
+  }
+  
+  .race-board__header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .race-board__header h2 {
+    margin-bottom: 0;
+  }
+  
+  .race-board__markers {
+    display: flex;
+    gap: 1.5rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  
+  .race-board__track {
+    display: grid;
+    grid-template-columns: repeat(16, minmax(0, 1fr));
+    gap: 0.35rem;
+    min-height: 220px;
+    align-items: end;
+  }
+  
+  .race-space {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    height: 210px;
+    align-items: flex-end;
+    justify-content: center;
+    overflow: visible;
+    border: 1px solid #e5d6bd;
+    border-radius: 12px;
+    background: #fbf4e8;
+  }
+  
+  .race-space__number {
+    position: absolute;
+    top: 0.45rem;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #817263;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  
+  /*
+  Each camel is positioned independently.
+  
+  The backend stores a stack from bottom to top:
+  index 0 = bottom camel
+  index 1 = camel directly above it
+  index 2 = next camel above that
+  */
+  .camel-stack {
+    --stack-step: 28px;
+  
+    position: absolute;
+    right: 2px;
+    bottom: 5px;
+    left: 2px;
+  
+    height: calc(
+      44px + (var(--stack-size) - 1) * var(--stack-step)
+    );
+  
+    pointer-events: none;
+  }
+  
+  .camel-piece {
+    position: absolute;
+    bottom: calc(var(--stack-index) * var(--stack-step));
+    left: 50%;
+  
+    display: block;
+    width: 100%;
+    max-width: 58px;
+    height: auto;
+  
+    transform: translateX(-50%);
+    overflow: visible;
+  }
+  
+  /*
+  Keep later camels visually above earlier camels.
+  */
+  .camel-piece:nth-child(1) {
+    z-index: 1;
+  }
+  
+  .camel-piece:nth-child(2) {
+    z-index: 2;
+  }
+  
+  .camel-piece:nth-child(3) {
+    z-index: 3;
+  }
+  
+  .camel-piece:nth-child(4) {
+    z-index: 4;
+  }
+  
+  .camel-piece:nth-child(5) {
+    z-index: 5;
+  }
+  
+  @media (max-width: 1150px) {
+    .race-board {
+      padding: 1rem;
+    }
+  
+    .race-board__track {
+      gap: 0.2rem;
+      min-height: 190px;
+    }
+  
+    .race-space {
+      height: 185px;
+      border-radius: 9px;
+    }
+  
+    .camel-stack {
+      --camel-width: 72px;
+      --stack-step: 23px;
+  
+      height: calc(
+        45px + (var(--stack-size) - 1) * var(--stack-step)
+      );
+    }
+  }
