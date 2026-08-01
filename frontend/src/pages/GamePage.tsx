@@ -1,5 +1,6 @@
 import { DieFace } from "../components/dice/DieFace";
 import { BettingPanel } from "../components/betting/BettingPanel";
+import { PlayerBetTickets } from "../components/player/PlayerBetTickets";
 import {
     useCallback,
     useEffect,
@@ -236,25 +237,33 @@ import {
               <div className="player-cards">
                 {game.players.map((player, index) => (
                   <article
-                    className={
-                      index === game.currentPlayer
-                        ? "player-card active-player"
-                        : "player-card"
-                    }
-                    key={`${player.name}-${index}`}
-                  >
-                    <div>
+                  className={
+                    index === game.currentPlayer
+                      ? "player-card active-player"
+                      : "player-card"
+                  }
+                  key={`${player.name}-${index}`}
+                >
+                  <div className="player-card__header">
+                    <div className="player-card__identity">
                       <strong>{player.name}</strong>
-  
+                
                       <span>
                         {index === game.currentPlayer
                           ? "Current turn"
-                          : `${player.bets.length} bets`}
+                          : `${player.bets.length} ${
+                              player.bets.length === 1 ? "ticket" : "tickets"
+                            }`}
                       </span>
                     </div>
-  
-                    <strong>{player.money}¢</strong>
-                  </article>
+                
+                    <strong className="player-card__money">
+                      {player.money}¢
+                    </strong>
+                  </div>
+                
+                  <PlayerBetTickets bets={player.bets} />
+                </article>
                 ))}
               </div>
             </section>

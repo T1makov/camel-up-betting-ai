@@ -12,11 +12,11 @@ from Player import Player
 STYLES = {color: "" for color in "rbgyp"}
 
 COLOR_NAMES = {
-    "r": "Ruby",
-    "b": "Azure",
-    "g": "Emerald",
-    "y": "Saffron",
-    "p": "Orchid",
+    "r": "Red",
+    "b": "Blue",
+    "g": "Green",
+    "y": "Yellow",
+    "p": "Purple",
 }
 
 

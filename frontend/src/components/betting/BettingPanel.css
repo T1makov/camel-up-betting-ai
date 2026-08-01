@@ -31,14 +31,11 @@
   }
   
   .bet-ticket {
-    position: relative;
     display: flex;
     min-width: 0;
-    min-height: 112px;
+    min-height: 145px;
     flex-direction: column;
-    align-items: flex-start;
-    justify-content: space-between;
-    overflow: hidden;
+    align-items: stretch;
     border: 0;
     border-radius: 18px;
     padding: 0.9rem;
@@ -49,18 +46,6 @@
       transform 160ms ease,
       filter 160ms ease,
       opacity 160ms ease;
-  }
-  
-  .bet-ticket::after {
-    position: absolute;
-    right: -18px;
-    bottom: -22px;
-    width: 68px;
-    height: 68px;
-    border: 8px solid currentColor;
-    border-radius: 50%;
-    content: "";
-    opacity: 0.12;
   }
   
   .bet-ticket:hover:not(:disabled) {
@@ -77,28 +62,65 @@
   }
   
   .bet-ticket__camel {
-    position: relative;
-    z-index: 1;
     font-size: 0.75rem;
     font-weight: 800;
     letter-spacing: 0.09em;
     text-transform: uppercase;
   }
   
-  .bet-ticket__value {
-    position: relative;
-    z-index: 1;
+  .bet-ticket__payouts {
+    display: grid;
+    flex: 1;
+    align-content: center;
+    gap: 0.55rem;
+    margin-top: 0.55rem;
+  }
+  
+  .bet-ticket__main-payout {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.4rem;
+  }
+  
+  .bet-ticket__main-payout span {
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  
+  .bet-ticket__main-payout strong {
     font-size: 2rem;
-    font-weight: 800;
     line-height: 1;
   }
   
-  .bet-ticket__footer {
-    position: relative;
-    z-index: 1;
+  .bet-ticket__secondary-payouts {
+    display: grid;
+    gap: 0.25rem;
+    border-top: 1px solid currentColor;
+    padding-top: 0.5rem;
     font-size: 0.72rem;
+    opacity: 0.9;
+  }
+  
+  .bet-ticket__secondary-payouts span {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  
+  .bet-ticket__remaining {
+    margin-top: auto;
+    padding-top: 0.55rem;
+    font-size: 0.68rem;
     font-weight: 700;
-    opacity: 0.85;
+    opacity: 0.75;
+  }
+  
+  .bet-ticket__sold-out {
+    display: grid;
+    flex: 1;
+    place-items: center;
+    font-weight: 800;
   }
   
   .bet-ticket--r {
@@ -130,13 +152,13 @@
   
   @media (max-width: 950px) {
     .betting-panel__tickets {
-      grid-template-columns: repeat(5, minmax(92px, 1fr));
+      grid-template-columns: repeat(5, minmax(105px, 1fr));
       overflow-x: auto;
       padding-bottom: 0.35rem;
     }
   
     .bet-ticket {
-      min-width: 92px;
+      min-width: 105px;
     }
   }
   
