@@ -5,7 +5,11 @@ import "./BettingPanel.css";
 interface BettingPanelProps {
   tickets: Record<CamelColor, number[]>;
   disabled?: boolean;
-  onBet: (color: CamelColor) => void;
+  animatingColor?: CamelColor | null;
+  onBet: (
+    color: CamelColor,
+    sourceRect: DOMRect,
+  ) => void;
 }
 
 const CAMEL_NAMES: Record<CamelColor, string> = {
@@ -27,6 +31,7 @@ const CAMEL_COLORS: CamelColor[] = [
 export function BettingPanel({
   tickets,
   disabled = false,
+  animatingColor = null,
   onBet,
 }: BettingPanelProps) {
   return (
@@ -51,21 +56,34 @@ export function BettingPanel({
         {CAMEL_COLORS.map((color) => {
           const availableTickets = tickets[color] ?? [];
           const topValue = availableTickets[0];
-          const isSoldOut = availableTickets.length === 0;
+          const isSoldOut =
+            availableTickets.length === 0;
+          const isInFlight =
+            animatingColor === color;
 
           return (
             <button
               className={[
                 "bet-ticket",
                 `bet-ticket--${color}`,
-                isSoldOut ? "bet-ticket--sold-out" : "",
+                isSoldOut
+                  ? "bet-ticket--sold-out"
+                  : "",
+                isInFlight
+                  ? "bet-ticket--in-flight"
+                  : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
               type="button"
               key={color}
               disabled={disabled || isSoldOut}
-              onClick={() => onBet(color)}
+              onClick={(event) =>
+                onBet(
+                  color,
+                  event.currentTarget.getBoundingClientRect(),
+                )
+              }
               aria-label={
                 isSoldOut
                   ? `${CAMEL_NAMES[color]} tickets sold out`

@@ -4,6 +4,10 @@ import {
     useRef,
     useState,
   } from "react";
+  import type {
+    AnimationEvent,
+    CSSProperties,
+  } from "react";
   import { Link, useParams } from "react-router-dom";
   
   import {
@@ -38,6 +42,22 @@ import {
     nextGame: GameState;
   }
   
+  interface ScreenRectangle {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  }
+  
+  interface PendingBetAnimation {
+    id: number;
+    color: CamelColor;
+    value: number;
+    sourceRect: ScreenRectangle;
+    targetRect: ScreenRectangle;
+    nextGame: GameState;
+  }
+  
   type DiceOverlayPhase =
     | "tumbling"
     | "revealed"
@@ -59,8 +79,17 @@ import {
       useState<DiceOverlayPhase | null>(null);
     const [diceDisplayValue, setDiceDisplayValue] =
       useState(1);
+    const [pendingBet, setPendingBet] =
+      useState<PendingBetAnimation | null>(null);
+    const [
+      isBetSelectionInProgress,
+      setIsBetSelectionInProgress,
+    ] = useState(false);
   
     const rollSequence = useRef(0);
+    const betSequence = useRef(0);
+    const currentPlayerBetTargetRef =
+      useRef<HTMLDivElement | null>(null);
   
     const loadGame = useCallback(async () => {
       if (!gameId) {
@@ -171,7 +200,8 @@ import {
         !game ||
         isActing ||
         queuedRoll ||
-        pendingRoll
+        pendingRoll ||
+        pendingBet
       ) {
         return;
       }
@@ -228,6 +258,139 @@ import {
       setPendingRoll(null);
       setIsActing(false);
     }, [pendingRoll]);
+  
+    function getCurrentPlayerBetTarget(): ScreenRectangle | null {
+      const target = currentPlayerBetTargetRef.current;
+  
+      if (!target) {
+        return null;
+      }
+  
+      const targetBounds = target.getBoundingClientRect();
+      const existingTickets =
+        target.querySelectorAll<HTMLElement>(
+          ".player-bet-ticket",
+        );
+      const lastTicket =
+        existingTickets.length > 0
+          ? existingTickets[
+              existingTickets.length - 1
+            ]
+          : null;
+  
+      const ticketSize = 42;
+      const ticketGap = 7;
+      const preferredLeft = lastTicket
+        ? lastTicket.getBoundingClientRect().right +
+          ticketGap
+        : targetBounds.left;
+  
+      return {
+        left: Math.max(
+          targetBounds.left,
+          Math.min(
+            preferredLeft,
+            targetBounds.right - ticketSize,
+          ),
+        ),
+        top:
+          targetBounds.top +
+          Math.max(
+            0,
+            (targetBounds.height - ticketSize) / 2,
+          ),
+        width: ticketSize,
+        height: ticketSize,
+      };
+    }
+  
+    async function handleBet(
+      color: CamelColor,
+      sourceRect: DOMRect,
+    ) {
+      if (
+        !gameId ||
+        !game ||
+        isActing ||
+        game.status !== "playing"
+      ) {
+        return;
+      }
+  
+      const ticketValue = game.tickets[color]?.[0];
+  
+      if (ticketValue === undefined) {
+        return;
+      }
+  
+      setIsActing(true);
+      setIsBetSelectionInProgress(true);
+      setError(null);
+      setAdvice([]);
+  
+      try {
+        const nextGame = await placeBet(gameId, color);
+        const targetRect = getCurrentPlayerBetTarget();
+        const reducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+  
+        if (!targetRect || reducedMotion) {
+          setGame(nextGame);
+          setIsBetSelectionInProgress(false);
+          setIsActing(false);
+          return;
+        }
+  
+        betSequence.current += 1;
+  
+        setPendingBet({
+          id: betSequence.current,
+          color,
+          value: ticketValue,
+          sourceRect: {
+            left: sourceRect.left,
+            top: sourceRect.top,
+            width: sourceRect.width,
+            height: sourceRect.height,
+          },
+          targetRect,
+          nextGame,
+        });
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "The betting ticket could not be taken.",
+        );
+        setIsBetSelectionInProgress(false);
+        setIsActing(false);
+      }
+    }
+  
+    const completeBetAnimation = useCallback(() => {
+      if (!pendingBet) {
+        return;
+      }
+  
+      setGame(pendingBet.nextGame);
+      setPendingBet(null);
+      setIsBetSelectionInProgress(false);
+      setIsActing(false);
+    }, [pendingBet]);
+  
+    function handleBetAnimationEnd(
+      event: AnimationEvent<HTMLDivElement>,
+    ) {
+      if (
+        event.target !== event.currentTarget ||
+        event.animationName !== "bet-ticket-flight"
+      ) {
+        return;
+      }
+  
+      completeBetAnimation();
+    }
   
     async function handleAdvice() {
       if (!gameId) {
@@ -411,7 +574,8 @@ import {
                     >
                       {isActing &&
                       !queuedRoll &&
-                      !pendingRoll
+                      !pendingRoll &&
+                      !pendingBet
                         ? "Calculating…"
                         : "Analyze bets"}
                     </button>
@@ -463,10 +627,11 @@ import {
               disabled={
                 isActing || game.status !== "playing"
               }
-              onBet={(color) =>
-                void performAction(() =>
-                  placeBet(gameId, color),
-                )
+              animatingColor={
+                pendingBet?.color ?? null
+              }
+              onBet={(color, sourceRect) =>
+                void handleBet(color, sourceRect)
               }
             />
           </div>
@@ -516,6 +681,17 @@ import {
   
                     <PlayerBetTickets
                       bets={player.bets}
+                      hideEmptyMessage={
+                        isBetSelectionInProgress &&
+                        !isFinished &&
+                        index === game.currentPlayer
+                      }
+                      containerRef={
+                        !isFinished &&
+                        index === game.currentPlayer
+                          ? currentPlayerBetTargetRef
+                          : undefined
+                      }
                     />
                   </article>
                 ))}
@@ -589,6 +765,54 @@ import {
                   ? "Rolling…"
                   : `${CAMEL_NAMES[queuedRoll.color]} · ${queuedRoll.steps}`}
               </p>
+            </div>
+          </div>
+        )}
+  
+        {pendingBet && (
+          <div
+            className="bet-ticket-flight-layer"
+            aria-hidden="true"
+          >
+            <div
+              className={`flying-bet-ticket flying-bet-ticket--${pendingBet.color}`}
+              key={pendingBet.id}
+              onAnimationEnd={handleBetAnimationEnd}
+              style={
+                {
+                  "--bet-start-left":
+                    `${pendingBet.sourceRect.left}px`,
+                  "--bet-start-top":
+                    `${pendingBet.sourceRect.top}px`,
+                  "--bet-start-width":
+                    `${pendingBet.sourceRect.width}px`,
+                  "--bet-start-height":
+                    `${pendingBet.sourceRect.height}px`,
+                  "--bet-target-left":
+                    `${pendingBet.targetRect.left}px`,
+                  "--bet-target-top":
+                    `${pendingBet.targetRect.top}px`,
+                  "--bet-target-width":
+                    `${pendingBet.targetRect.width}px`,
+                  "--bet-target-height":
+                    `${pendingBet.targetRect.height}px`,
+                } as CSSProperties
+              }
+            >
+              <div className="flying-bet-ticket__details">
+                <span className="flying-bet-ticket__camel">
+                  {CAMEL_NAMES[pendingBet.color]}
+                </span>
+  
+                <span className="flying-bet-ticket__payout">
+                  1st
+                  <strong>+{pendingBet.value}</strong>
+                </span>
+              </div>
+  
+              <strong className="flying-bet-ticket__final-value">
+                {pendingBet.value}
+              </strong>
             </div>
           </div>
         )}

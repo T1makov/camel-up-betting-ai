@@ -144,6 +144,12 @@
     background: #7547b8;
   }
   
+  .bet-ticket--in-flight {
+    transform: translateY(-3px) scale(0.985);
+    opacity: 0.18;
+    filter: saturate(0.75);
+  }
+
   .bet-ticket--sold-out {
     color: var(--muted);
     background: #e8dfd1;

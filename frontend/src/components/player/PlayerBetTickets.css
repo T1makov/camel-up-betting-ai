@@ -14,6 +14,11 @@
     color: var(--muted);
     font-size: 0.72rem;
   }
+
+
+  .player-card .player-bets--pending {
+    min-height: 42px;
+  }
   
   .player-bet-ticket {
     display: grid;
