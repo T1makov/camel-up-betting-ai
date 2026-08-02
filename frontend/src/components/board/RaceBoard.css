@@ -29,9 +29,12 @@
   }
   
   .race-board__track {
+    --race-gap: 0.35rem;
+    --stack-step: 28px;
+  
     display: grid;
     grid-template-columns: repeat(16, minmax(0, 1fr));
-    gap: 0.35rem;
+    gap: var(--race-gap);
     min-height: 220px;
     align-items: end;
   }
@@ -60,44 +63,40 @@
   }
   
   /*
-  Each camel is positioned independently.
-  
-  The backend stores a stack from bottom to top:
+  The backend stores each stack from bottom to top:
   index 0 = bottom camel
   index 1 = camel directly above it
-  index 2 = next camel above that
+  index 2 = the next camel above that
   */
   .camel-stack {
-    --stack-step: 28px;
-  
     position: absolute;
     right: 2px;
     bottom: 5px;
     left: 2px;
-  
     height: calc(
       44px + (var(--stack-size) - 1) * var(--stack-step)
     );
-  
     pointer-events: none;
   }
   
   .camel-piece {
     position: absolute;
-    bottom: calc(var(--stack-index) * var(--stack-step));
+    bottom: calc(
+      var(--stack-index) * var(--stack-step)
+    );
     left: 50%;
-  
     display: block;
     width: 100%;
     max-width: 58px;
     height: auto;
-  
     transform: translateX(-50%);
     overflow: visible;
   }
   
   /*
-  Keep later camels visually above earlier camels.
+  Later camels remain visually above earlier camels.
+  The whole moving stack is animated as one rigid object, so
+  the upper camels never move relative to the bottom camel.
   */
   .camel-piece:nth-child(1) {
     z-index: 1;
@@ -119,13 +118,134 @@
     z-index: 5;
   }
   
+  /*
+  One animation cycle always travels exactly one board space.
+  A die roll of 3 therefore starts this animation three times.
+  */
+  .camel-stack--moving {
+    --hop-x: calc(100% + var(--race-gap) + 4px);
+  
+    z-index: 20;
+    bottom: calc(
+      5px + var(--start-base-size) * var(--stack-step)
+    );
+    animation: camel-stack-hop 560ms
+      cubic-bezier(0.35, 0, 0.2, 1) both;
+    will-change: transform;
+  }
+  
+  .camel-stack--in-place {
+    --hop-x: 0px;
+  }
+  
+  /*
+  Only the bottom camel is split into animated visual layers.
+  Every layer uses the exact same approved SVG path. The path
+  data itself is never changed.
+  */
+  .camel-piece__leg {
+    transform-box: view-box;
+  }
+  
+  .camel-piece__leg--rear {
+    transform-origin: 250px 445px;
+    animation: camel-rear-leg-wiggle 280ms
+      ease-in-out 2;
+  }
+  
+  .camel-piece__leg--front {
+    transform-origin: 555px 445px;
+    animation: camel-front-leg-wiggle 280ms
+      ease-in-out 2;
+  }
+  
+  @keyframes camel-stack-hop {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+  
+    18% {
+      transform: translate3d(
+        calc(var(--hop-x) * 0.12),
+        -18px,
+        0
+      );
+    }
+  
+    48% {
+      transform: translate3d(
+        calc(var(--hop-x) * 0.5),
+        -50px,
+        0
+      );
+    }
+  
+    76% {
+      transform: translate3d(
+        calc(var(--hop-x) * 0.84),
+        -24px,
+        0
+      );
+    }
+  
+    100% {
+      transform: translate3d(
+        var(--hop-x),
+        calc(
+          var(--base-difference) * var(--stack-step)
+        ),
+        0
+      );
+    }
+  }
+  
+  @keyframes camel-rear-leg-wiggle {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+  
+    22% {
+      transform: rotate(-7deg);
+    }
+  
+    48% {
+      transform: rotate(7deg);
+    }
+  
+    74% {
+      transform: rotate(-5deg);
+    }
+  }
+  
+  @keyframes camel-front-leg-wiggle {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+  
+    22% {
+      transform: rotate(7deg);
+    }
+  
+    48% {
+      transform: rotate(-7deg);
+    }
+  
+    74% {
+      transform: rotate(5deg);
+    }
+  }
+  
   @media (max-width: 1150px) {
     .race-board {
       padding: 1rem;
     }
   
     .race-board__track {
-      gap: 0.2rem;
+      --race-gap: 0.2rem;
+      --stack-step: 23px;
+  
       min-height: 190px;
     }
   
@@ -135,11 +255,17 @@
     }
   
     .camel-stack {
-      --camel-width: 72px;
-      --stack-step: 23px;
-  
       height: calc(
-        45px + (var(--stack-size) - 1) * var(--stack-step)
+        45px + (var(--stack-size) - 1) *
+          var(--stack-step)
       );
+    }
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    .camel-stack--moving,
+    .camel-piece__leg--rear,
+    .camel-piece__leg--front {
+      animation: none;
     }
   }

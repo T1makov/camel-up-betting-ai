@@ -1,6 +1,7 @@
 import {
     useCallback,
     useEffect,
+    useRef,
     useState,
   } from "react";
   import { Link, useParams } from "react-router-dom";
@@ -29,6 +30,13 @@ import {
     y: "Yellow",
     p: "Purple",
   };
+
+  interface PendingRollAnimation {
+    id: number;
+    color: CamelColor;
+    steps: number;
+    nextGame: GameState;
+  }
   
   export function GamePage() {
     const { gameId } = useParams<{ gameId: string }>();
@@ -38,6 +46,9 @@ import {
     const [isLoading, setIsLoading] = useState(true);
     const [isActing, setIsActing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pendingRoll, setPendingRoll] =
+      useState<PendingRollAnimation | null>(null);
+    const rollSequence = useRef(0);
   
     const loadGame = useCallback(async () => {
       if (!gameId) {
@@ -85,6 +96,56 @@ import {
       }
     }
   
+    async function handleRoll() {
+      if (!gameId || !game || isActing) {
+        return;
+      }
+
+      setIsActing(true);
+      setError(null);
+      setAdvice([]);
+
+      try {
+        const nextGame = await rollDie(gameId);
+        const rolledDie =
+          nextGame.rolledDice[
+            nextGame.rolledDice.length - 1
+          ];
+
+        if (!rolledDie) {
+          setGame(nextGame);
+          setIsActing(false);
+          return;
+        }
+
+        rollSequence.current += 1;
+
+        setPendingRoll({
+          id: rollSequence.current,
+          color: rolledDie.color,
+          steps: rolledDie.value,
+          nextGame,
+        });
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "The die could not be rolled.",
+        );
+        setIsActing(false);
+      }
+    }
+
+    const completeRollAnimation = useCallback(() => {
+      if (!pendingRoll) {
+        return;
+      }
+
+      setGame(pendingRoll.nextGame);
+      setPendingRoll(null);
+      setIsActing(false);
+    }, [pendingRoll]);
+
     async function handleAdvice() {
       if (!gameId) {
         return;
@@ -242,13 +303,11 @@ import {
                       className="primary-button"
                       type="button"
                       disabled={isActing}
-                      onClick={() =>
-                        void performAction(() =>
-                          rollDie(gameId),
-                        )
-                      }
+                      onClick={() => void handleRoll()}
                     >
-                      Roll from pyramid
+                      {pendingRoll
+                        ? "Moving…"
+                        : "Roll from pyramid"}
                     </button>
   
                     <button
@@ -285,7 +344,19 @@ import {
               </div>
             </section>
   
-            <RaceBoard track={game.track} />
+            <RaceBoard
+              track={game.track}
+              move={
+                pendingRoll
+                  ? {
+                      id: pendingRoll.id,
+                      color: pendingRoll.color,
+                      steps: pendingRoll.steps,
+                    }
+                  : null
+              }
+              onMoveComplete={completeRollAnimation}
+            />
   
             <BettingPanel
               tickets={game.tickets}
