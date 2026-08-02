@@ -1,95 +1,175 @@
-# Camel Up Betting AI
+# Camel Up Strategy Lab
 
-A Python simulator and betting advisor for **Camel Up**, focused on modeling randomized camel movement, leg betting, and expected-value-based decision making.
+A full-stack **Camel Up** race simulator and betting advisor built with Python, FastAPI, React, and TypeScript.
 
-This project simulates the core mechanics of a Camel Up leg and includes an AI advisor that estimates each camel’s probability of finishing first or second. The advisor then uses those probabilities to evaluate available betting tickets and recommend statistically strong choices.
+The project models camel movement, stacking, dice rolls, leg betting, payouts, multi-leg races, and final winners. Its AI advisor evaluates the current board state, calculates first- and second-place probabilities, and ranks available betting tickets by expected value.
 
-## Overview
+> Educational project inspired by the board game *Camel Up*. This repository is not affiliated with the official game or publisher.
 
-Camel Up is a stochastic board game where camels move according to randomized dice rolls. Because camels can stack on top of each other and move together, each roll can significantly change the race state.
+![Camel Up Strategy Lab game screen](docs/media/game-board.png)
 
-This project models those mechanics and uses probability simulation to answer questions like:
+## Highlights
 
-* Which camel is most likely to finish first this leg?
-* Which camel is most likely to finish second?
-* Which available betting ticket has the highest expected value?
-* How do exhaustive enumeration and Monte Carlo simulation compare?
+- Complete multi-player race flow across multiple legs
+- Correct camel stacking and stack movement
+- Stack-aware, one-space-at-a-time camel animations
+- Full-screen animated dice rolls
+- Animated betting-ticket transfers
+- Click-to-dismiss leg payout summaries
+- Final race-winner celebration
+- Subtle player turn transitions
+- Expected-value betting analysis
+- Exact enumeration of remaining die outcomes
+- Monte Carlo analysis support in the Python engine
+- FastAPI game API
+- Responsive React and TypeScript interface
+- Automated Python tests and frontend build/lint scripts
 
-## Features
+## How It Works
 
-* Simulates camel movement, stacking, dice rolls, and track position updates
-* Models leg betting tickets and payout logic
-* Supports multiple players
-* Includes an AI betting advisor
-* Computes first-place and second-place probabilities
-* Uses exhaustive enumeration of remaining dice outcomes
-* Includes Monte Carlo simulation for experimental probability estimates
-* Calculates expected value for available bets
-* Includes unit tests for board logic, dice behavior, payouts, and AI analysis
+Each camel has a matching die with possible values of `1`, `2`, or `3`.
 
-## Project Structure
+When a camel moves:
 
-```text
-camel-up-betting-ai/
-├── AI.py              # AI probability analysis and betting recommendations
-├── Board.py           # Board state, camel movement, rankings, and tickets
-├── CamelUp.py         # Main game loop and player actions
-├── Player.py          # Player money and betting tickets
-├── Pyramid.py         # Dice rolling logic
-├── requirements.txt   # Python dependencies
-├── README.md          # Project documentation
-└── tests/             # Unit tests
-```
+1. The camel advances by the rolled number of spaces.
+2. Any camels stacked above it move with it.
+3. The moving stack lands on top of the destination stack.
+4. Rankings are recalculated from track position and stack order.
 
-## How the AI Works
+A leg ends after every available camel die has been rolled. Players are then paid according to the camels finishing first and second in that leg. The race continues through additional legs until a camel reaches or crosses the finish.
 
-The AI advisor analyzes the current board state and estimates how likely each camel is to finish the leg in first or second place.
+## AI Betting Advisor
 
-For the remaining dice in the leg, each possible future roll has:
+The advisor analyzes the current board state and estimates the probability that each camel will finish the leg in first or second place.
 
-* a camel color
-* a movement value of 1, 2, or 3
+### Exhaustive Enumeration
 
-The AI uses two approaches:
+For every remaining die, the engine considers:
 
-### 1. Exhaustive Enumeration
+- which camel is rolled
+- whether that die shows `1`, `2`, or `3`
+- every possible ordering of the remaining rolls
 
-The AI generates every possible sequence of remaining dice rolls, simulates each sequence, and counts how often each camel finishes first or second.
+Each possible continuation is simulated from a copy of the current board state. The resulting rankings are aggregated into exact first- and second-place probabilities for the current leg.
 
-This gives an exact probability estimate for the current leg state.
+The web interface uses this enumerative analysis when the player selects **Analyze bets**.
 
-### 2. Monte Carlo Simulation
+### Monte Carlo Simulation
 
-The AI also supports repeated random simulations. Instead of checking every possible future sequence, it samples many possible outcomes and estimates probabilities experimentally.
+The Python engine also supports repeated random simulations. This provides an experimental probability estimate that can be compared with the exact enumerative result.
 
-This is useful for comparing exact and sampled probability estimates.
+### Expected Value
 
-## Expected Value Calculation
-
-For each available betting ticket, the AI calculates expected value using the probability that the selected camel finishes first, second, or outside the top two.
-
-The formula is:
+For a ticket with value \(v\), the advisor calculates:
 
 ```text
-EV = ticket_value × P(first) + 1 × P(second) - 1 × P(other)
+EV = v × P(first) + 1 × P(second) - 1 × P(other)
 ```
 
-Where:
+where:
 
 ```text
 P(other) = 1 - P(first) - P(second)
 ```
 
-The AI can then recommend the bet with the highest expected value.
+Available tickets are ranked from highest to lowest expected value.
 
-## Installation
+## Gameplay Experience
 
-Clone the repository:
+### Dice rolls
+
+The selected die appears in a full-screen overlay, tumbles through temporary values, reveals the actual result, and then disappears before camel movement begins.
+
+### Camel movement
+
+Camels move through separate one-space hops. A camel carries every camel stacked above it, while occupied intermediate spaces are treated as obstacles that the moving stack must visibly clear.
+
+### Betting tickets
+
+Selecting a ticket animates the full betting card into the active player's compact ticket row. The permanent board layout remains unchanged during the animation.
+
+### Leg payouts
+
+At the end of a leg, the interface shows:
+
+- first- and second-place camel icons
+- every player's tickets
+- each ticket's payout
+- each player's combined leg result
+
+The payout screen remains visible until the player clicks **Continue**.
+
+### Race completion
+
+After the final payout, the winning camel and winning player are presented in a dedicated celebration. The final score screen appears after the player selects **View final results**.
+
+## Tech Stack
+
+### Backend
+
+- Python
+- FastAPI
+- Uvicorn
+- Pytest
+- Colorama
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- React Router
+- ESLint
+
+## Project Structure
+
+```text
+camel-up-betting-ai/
+├── AI.py                         # Probability analysis and expected value
+├── Board.py                      # Track, movement, rankings, and tickets
+├── CamelUp.py                    # Core game orchestration and payouts
+├── Player.py                     # Player balance and betting tickets
+├── Pyramid.py                    # Dice state and randomized rolls
+├── web/
+│   ├── app.py                    # FastAPI routes and application setup
+│   └── service.py                # In-memory game sessions and serialization
+├── frontend/
+│   ├── src/
+│   │   ├── api/                  # Backend API client
+│   │   ├── components/
+│   │   │   ├── betting/          # Betting cards
+│   │   │   ├── board/            # Race board and movement animation
+│   │   │   ├── dice/             # Die rendering
+│   │   │   ├── icons/            # Approved camel SVG component
+│   │   │   └── player/           # Player betting-ticket display
+│   │   ├── pages/                # Setup, landing, and game pages
+│   │   ├── types/                # Shared frontend data types
+│   │   └── index.css             # Global layout and animation styles
+│   ├── package.json
+│   └── vite.config.ts
+├── tests/                         # Python unit tests
+├── requirements.txt
+└── README.md
+```
+
+## Getting Started
+
+### Prerequisites
+
+Install:
+
+- Python 3.10 or newer
+- Node.js and npm
+- Git
+
+### Clone the repository
 
 ```bash
 git clone https://github.com/T1makov/camel-up-betting-ai.git
 cd camel-up-betting-ai
 ```
+
+### Backend setup
 
 Create and activate a virtual environment:
 
@@ -98,53 +178,156 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Install dependencies:
+On Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+Install the Python dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Running the Game
+Start the FastAPI server from the repository root:
 
-Run:
+```bash
+python3 -m uvicorn web.app:app --reload
+```
+
+The API runs at:
+
+```text
+http://localhost:8000
+```
+
+Interactive API documentation is available at:
+
+```text
+http://localhost:8000/docs
+```
+
+### Frontend setup
+
+Open a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The Vite development server normally runs at:
+
+```text
+http://localhost:5173
+```
+
+Keep both the backend and frontend servers running while playing.
+
+## API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/health` | Check whether the API is running |
+| `POST` | `/api/games` | Create a game |
+| `GET` | `/api/games/{game_id}` | Retrieve the current game state |
+| `POST` | `/api/games/{game_id}/roll` | Roll a die and advance the race |
+| `POST` | `/api/games/{game_id}/bet` | Take a leg betting ticket |
+| `GET` | `/api/games/{game_id}/advice` | Calculate betting probabilities and EV |
+| `POST` | `/api/games/{game_id}/next-leg` | Reset leg resources and start the next leg |
+
+## Running the Command-Line Version
+
+The original Python interface remains available:
 
 ```bash
 python3 CamelUp.py
 ```
 
-During a turn, players can choose actions such as:
+Typical actions include:
 
 ```text
 r = roll a die
 b = take a betting ticket
-a = ask the AI advisor for analysis
+a = request AI analysis
 ```
 
-The game simulates a leg, processes payouts, and displays player results.
+## Testing and Validation
 
-## Running Tests
-
-Run the test suite with:
+Run the Python test suite from the repository root:
 
 ```bash
 python3 -m pytest
 ```
 
-## Current Scope
+Run frontend linting:
 
-This project focuses on simulating leg-level Camel Up betting decisions rather than implementing every rule from the full board game. The main goal is to model probabilistic race outcomes and use those probabilities to make better betting decisions.
+```bash
+cd frontend
+npm run lint
+```
 
-## Future Improvements
+Create a production frontend build:
 
-Potential extensions include:
+```bash
+npm run build
+```
 
-* Full-race simulation across multiple legs
-* Support for overall winner and loser bets
-* More polished command-line interface
-* Strategy comparison between human players and AI agents
-* Visualization of probability changes after each roll
-* Stronger Monte Carlo benchmarking for larger game variants
+Preview the production build locally:
 
-## Disclaimer
+```bash
+npm run preview
+```
 
-This is an educational programming project inspired by the board game Camel Up. It is not affiliated with the official game or publisher.
+## Screenshots
+
+### Main Game Interface
+
+![Camel Up Strategy Lab game screen](docs/media/game-board.png)
+
+### End-of-Leg Payouts
+
+![End-of-leg payout screen](docs/media/leg-payout.png)
+
+### Game-Over Celebration
+
+![Game-over celebration](docs/media/game-over.png)
+
+## Current Limitations
+
+- Game sessions are stored in server memory and are lost when the backend restarts.
+- The interface does not currently support remote real-time multiplayer.
+- Overall race winner/loser betting is not implemented.
+- Spectator tiles are not implemented.
+- Monte Carlo analysis is supported by the Python engine but is not exposed as a separate web-interface mode.
+- The current engine models the five primary racing camels supported by this project.
+
+## Possible Extensions
+
+- Persistent game storage
+- Remote multiplayer rooms
+- Overall winner and loser betting
+- Spectator tile placement
+- Probability charts that update after every roll
+- Side-by-side enumeration and Monte Carlo comparisons
+- AI-controlled players and strategy tournaments
+- Deployment of the API and frontend
+- End-to-end browser tests
+
+## Design Goals
+
+The interface intentionally uses:
+
+- flat two-dimensional camel pieces
+- the official five camel colors
+- a warm desert-inspired palette
+- a single consistent sans-serif typeface
+- animation that explains game state changes without redesigning the board
+- reduced-motion fallbacks for accessibility
+
+## License and Attribution
+
+This is an educational programming project inspired by *Camel Up*. It is not affiliated with, endorsed by, or sponsored by the official game or its publisher.
