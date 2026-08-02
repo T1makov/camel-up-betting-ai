@@ -68,6 +68,19 @@ import {
   interface PendingGameOverAnimation {
     nextGame: GameState;
   }
+
+  interface TurnPlayerSnapshot {
+    name: string;
+    money: number;
+    betCount: number;
+  }
+
+  interface TurnTransition {
+    id: number;
+    fromIndex: number;
+    toIndex: number;
+    fromPlayer: TurnPlayerSnapshot;
+  }
   
   type DiceOverlayPhase =
     | "tumbling"
@@ -138,9 +151,12 @@ import {
       displayedWinnerCoins,
       setDisplayedWinnerCoins,
     ] = useState(0);
+    const [turnTransition, setTurnTransition] =
+      useState<TurnTransition | null>(null);
   
     const rollSequence = useRef(0);
     const betSequence = useRef(0);
+    const turnSequence = useRef(0);
     const currentPlayerBetTargetRef =
       useRef<HTMLDivElement | null>(null);
   
@@ -247,6 +263,64 @@ import {
       }
     }
   
+    const applyCompletedTurn = useCallback(
+      (
+        nextGame: GameState,
+        skipAnimation = false,
+      ) => {
+        const reducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        const canAnimateTurn =
+          !skipAnimation &&
+          !reducedMotion &&
+          game !== null &&
+          game.status === "playing" &&
+          nextGame.status === "playing" &&
+          game.currentPlayer !== nextGame.currentPlayer;
+
+        if (!canAnimateTurn || !game) {
+          setGame(nextGame);
+          setTurnTransition(null);
+          setIsActing(false);
+          return;
+        }
+
+        const previousPlayer =
+          game.players[game.currentPlayer];
+
+        turnSequence.current += 1;
+
+        setGame(nextGame);
+        setTurnTransition({
+          id: turnSequence.current,
+          fromIndex: game.currentPlayer,
+          toIndex: nextGame.currentPlayer,
+          fromPlayer: {
+            name: previousPlayer.name,
+            money: previousPlayer.money,
+            betCount: previousPlayer.bets.length,
+          },
+        });
+      },
+      [game],
+    );
+
+    useEffect(() => {
+      if (!turnTransition) {
+        return;
+      }
+
+      const completeTimer = window.setTimeout(() => {
+        setTurnTransition(null);
+        setIsActing(false);
+      }, 620);
+
+      return () => {
+        window.clearTimeout(completeTimer);
+      };
+    }, [turnTransition]);
+
     async function handleRoll() {
       if (
         !gameId ||
@@ -256,7 +330,8 @@ import {
         pendingRoll ||
         pendingBet ||
         pendingPayout ||
-        pendingGameOver
+        pendingGameOver ||
+        turnTransition
       ) {
         return;
       }
@@ -340,10 +415,9 @@ import {
         return;
       }
 
-      setGame(nextGame);
       setPendingRoll(null);
-      setIsActing(false);
-    }, [game, pendingRoll]);
+      applyCompletedTurn(nextGame);
+    }, [applyCompletedTurn, game, pendingRoll]);
 
     useEffect(() => {
       if (!pendingPayout || !payoutOverlayPhase) {
@@ -610,9 +684,8 @@ import {
         ).matches;
   
         if (!targetRect || reducedMotion) {
-          setGame(nextGame);
           setIsBetSelectionInProgress(false);
-          setIsActing(false);
+          applyCompletedTurn(nextGame, reducedMotion);
           return;
         }
   
@@ -647,11 +720,12 @@ import {
         return;
       }
   
-      setGame(pendingBet.nextGame);
+      const nextGame = pendingBet.nextGame;
+
       setPendingBet(null);
       setIsBetSelectionInProgress(false);
-      setIsActing(false);
-    }, [pendingBet]);
+      applyCompletedTurn(nextGame);
+    }, [applyCompletedTurn, pendingBet]);
   
     function handleBetAnimationEnd(
       event: AnimationEvent<HTMLDivElement>,
@@ -727,7 +801,9 @@ import {
           ? "Paying out…"
           : pendingGameOver
             ? "Celebrating…"
-            : "Roll from pyramid";
+            : turnTransition
+              ? "Next turn…"
+              : "Roll from pyramid";
   
     return (
       <main className="game-page">
@@ -757,26 +833,77 @@ import {
           <div className="game-main-column">
             <section className="panel turn-panel">
               <div className="turn-panel__layout">
-                <div className="turn-panel__player">
+                <div
+                  className={[
+                    "turn-panel__player",
+                    turnTransition
+                      ? "turn-panel__player--transitioning"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
                   <p className="eyebrow">
                     {isFinished
                       ? "Game over"
                       : "Current turn"}
                   </p>
-  
-                  <h2>
-                    {isFinished
-                      ? playerWinnerText
-                      : currentPlayer.name}
-                  </h2>
-  
-                  <p>
-                    {isFinished
-                      ? "Final coin totals are shown in the player panel."
-                      : `${currentPlayer.money} coins · ${currentPlayer.bets.length} tickets`}
-                  </p>
+
+                  {isFinished ? (
+                    <div className="turn-panel__player-content">
+                      <h2>{playerWinnerText}</h2>
+
+                      <p>
+                        Final coin totals are shown in the
+                        player panel.
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      className="turn-panel__player-swap"
+                      aria-live="polite"
+                    >
+                      {turnTransition && (
+                        <div
+                          className="turn-panel__player-content turn-panel__player-content--leaving"
+                          key={`leaving-${turnTransition.id}`}
+                          aria-hidden="true"
+                        >
+                          <h2>
+                            {turnTransition.fromPlayer.name}
+                          </h2>
+
+                          <p>
+                            {turnTransition.fromPlayer.money}{" "}
+                            coins ·{" "}
+                            {turnTransition.fromPlayer.betCount}{" "}
+                            tickets
+                          </p>
+                        </div>
+                      )}
+
+                      <div
+                        className={[
+                          "turn-panel__player-content",
+                          turnTransition
+                            ? "turn-panel__player-content--entering"
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        key={`current-${game.currentPlayer}-${turnTransition?.id ?? 0}`}
+                      >
+                        <h2>{currentPlayer.name}</h2>
+
+                        <p>
+                          {currentPlayer.money} coins ·{" "}
+                          {currentPlayer.bets.length} tickets
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-  
+
                 <div className="turn-panel__analysis">
                   {isFinished ? (
                     <div className="game-over-summary">
@@ -860,7 +987,8 @@ import {
                       !pendingRoll &&
                       !pendingBet &&
                       !pendingPayout &&
-                      !pendingGameOver
+                      !pendingGameOver &&
+                      !turnTransition
                         ? "Calculating…"
                         : "Analyze bets"}
                     </button>
@@ -930,12 +1058,23 @@ import {
               <div className="player-cards">
                 {game.players.map((player, index) => (
                   <article
-                    className={
+                    className={[
+                      "player-card",
                       !isFinished &&
                       index === game.currentPlayer
-                        ? "player-card active-player"
-                        : "player-card"
-                    }
+                        ? "active-player"
+                        : "",
+                      turnTransition &&
+                      index === turnTransition.toIndex
+                        ? "player-card--turn-enter"
+                        : "",
+                      turnTransition &&
+                      index === turnTransition.fromIndex
+                        ? "player-card--turn-exit"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                     key={`${player.name}-${index}`}
                   >
                     <div className="player-card__header">
