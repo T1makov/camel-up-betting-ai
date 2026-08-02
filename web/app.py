@@ -118,6 +118,11 @@ def get_advice(game_id: str) -> dict:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         ) from error
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
 
 
 @app.post("/api/games/{game_id}/next-leg")

@@ -26,11 +26,13 @@ export interface GameCapabilities {
 
 export interface GameState {
   gameId: string;
-  status: "playing" | "leg_complete";
+  status: "playing" | "leg_complete" | "finished";
   currentPlayer: number;
   leg: number;
   track: CamelColor[][];
   rankings: CamelColor[];
+  raceWinner: CamelColor | null;
+  winningPlayers: string[];
   players: Player[];
   tickets: Record<CamelColor, number[]>;
   rolledDice: RolledDie[];

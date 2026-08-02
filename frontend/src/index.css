@@ -29,8 +29,16 @@ html {
   min-width: 320px;
   min-height: 100%;
   background:
-    radial-gradient(circle at 15% 10%, #fff5d7 0, transparent 34%),
-    radial-gradient(circle at 90% 20%, #dbe9dc 0, transparent 30%),
+    radial-gradient(
+      circle at 15% 10%,
+      #fff5d7 0,
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 90% 20%,
+      #dbe9dc 0,
+      transparent 30%
+    ),
     var(--sand-100);
 }
 
@@ -64,12 +72,14 @@ a {
 
 h1,
 h2,
+h3,
 p {
   margin-top: 0;
 }
 
 h1,
-h2 {
+h2,
+h3 {
   font-family: "Playfair Display", serif;
 }
 
@@ -79,9 +89,9 @@ h2 {
   min-height: 46px;
   align-items: center;
   justify-content: center;
+  border: 1px solid transparent;
   border-radius: 999px;
   padding: 0.75rem 1.25rem;
-  border: 1px solid transparent;
   cursor: pointer;
   font-weight: 700;
   transition:
@@ -121,6 +131,8 @@ h2 {
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
+
+/* Landing page */
 
 .landing-page {
   width: min(1180px, calc(100% - 40px));
@@ -197,6 +209,8 @@ h2 {
   color: var(--muted);
   line-height: 1.65;
 }
+
+/* Setup page */
 
 .setup-page,
 .status-page {
@@ -290,6 +304,8 @@ h2 {
   background: #fee2dc;
 }
 
+/* Game page */
+
 .game-page {
   width: min(1440px, calc(100% - 36px));
   margin: 0 auto;
@@ -335,6 +351,8 @@ h2 {
   padding: 1.4rem;
 }
 
+/* Current turn and analysis */
+
 .turn-panel {
   background:
     linear-gradient(
@@ -344,17 +362,163 @@ h2 {
     );
 }
 
-.turn-panel h2 {
+.turn-panel__layout {
+  display: grid;
+  grid-template-columns:
+    minmax(170px, 0.7fr)
+    minmax(430px, 1.8fr)
+    auto;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.turn-panel__player {
+  min-width: 0;
+}
+
+.turn-panel__player .eyebrow {
+  margin-bottom: 0.8rem;
+}
+
+.turn-panel__player h2 {
   margin-bottom: 0.3rem;
   font-size: 2rem;
 }
 
+.turn-panel__player p:last-child {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.turn-panel__analysis {
+  min-width: 0;
+  width: 100%;
+}
+
+.turn-panel__analysis-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.turn-panel__analysis-heading strong {
+  color: var(--turquoise);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.turn-panel__analysis-heading span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
 .turn-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.65rem;
-  margin-top: 1.2rem;
 }
+
+.advice-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(68px, 1fr));
+  gap: 0.45rem;
+}
+
+.advice-row {
+  display: flex;
+  min-width: 0;
+  min-height: 76px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.12rem;
+  border-radius: 13px;
+  padding: 0.55rem;
+  color: white;
+  box-shadow: 0 6px 13px rgba(44, 36, 29, 0.11);
+}
+
+.advice-row strong {
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.advice-row span {
+  font-size: 0.66rem;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.advice-row--r {
+  background: #e53935;
+}
+
+.advice-row--b {
+  background: #1976d2;
+}
+
+.advice-row--g {
+  background: #43a047;
+}
+
+.advice-row--y {
+  color: #3b2d0a;
+  background: #f9b719;
+}
+
+.advice-row--p {
+  background: #7547b8;
+}
+
+
+.game-over-summary {
+  display: grid;
+  min-height: 76px;
+  grid-template-columns: auto minmax(130px, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid rgba(72, 52, 35, 0.12);
+  border-radius: 14px;
+  padding: 0.65rem;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.game-over-summary__label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.game-over-summary__camel {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.game-over-summary__player {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+/* Board and betting cards */
 
 .temporary-board {
   max-height: 280px;
@@ -405,6 +569,8 @@ h2 {
   font-size: 1.05rem;
 }
 
+/* Official camel colors */
+
 .camel-r {
   color: white;
   background: #e53935;
@@ -429,24 +595,12 @@ h2 {
   color: white;
   background: #7547b8;
 }
+
+/* Player sidebar */
+
 .player-cards {
   display: grid;
   gap: 0.65rem;
-}
-
-.player-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid transparent;
-  border-radius: 15px;
-  padding: 0.9rem;
-  background: rgba(44, 36, 29, 0.045);
-}
-
-.player-card div {
-  display: grid;
-  gap: 0.2rem;
 }
 
 .player-card {
@@ -466,8 +620,8 @@ h2 {
 
 .player-card__identity {
   display: grid;
-  gap: 0.2rem;
   min-width: 0;
+  gap: 0.2rem;
 }
 
 .player-card__identity strong {
@@ -490,10 +644,7 @@ h2 {
   background: rgba(22, 125, 127, 0.1);
 }
 
-.active-player {
-  border-color: rgba(22, 125, 127, 0.3);
-  background: rgba(22, 125, 127, 0.1);
-}
+/* Dice */
 
 .dice-list {
   display: flex;
@@ -526,6 +677,8 @@ h2 {
   opacity: 1;
 }
 
+/* Game log */
+
 .game-log {
   display: grid;
   max-height: 330px;
@@ -538,20 +691,7 @@ h2 {
   line-height: 1.5;
 }
 
-.advice-list {
-  display: grid;
-  gap: 0.6rem;
-  margin-top: 1rem;
-}
-
-.advice-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 1rem;
-  border-radius: 12px;
-  padding: 0.8rem 1rem;
-  background: rgba(44, 36, 29, 0.05);
-}
+/* Accessibility */
 
 .visually-hidden {
   position: absolute;
@@ -560,6 +700,21 @@ h2 {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+}
+
+/* Responsive layouts */
+
+@media (max-width: 1250px) {
+  .turn-panel__layout {
+    grid-template-columns:
+      minmax(170px, 0.65fr)
+      minmax(0, 1.5fr);
+  }
+
+  .turn-panel__layout .turn-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 950px) {
@@ -588,6 +743,26 @@ h2 {
   }
 }
 
+@media (max-width: 800px) {
+  .turn-panel__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .turn-panel__layout .turn-actions {
+    grid-column: auto;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .turn-panel__layout .turn-actions button {
+    flex: 1;
+  }
+
+  .advice-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 560px) {
   .landing-page,
   .game-page {
@@ -610,8 +785,24 @@ h2 {
     grid-template-columns: 1fr;
   }
 
-  .advice-row {
+  .turn-panel__analysis-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .advice-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .game-over-summary {
     grid-template-columns: 1fr;
-    gap: 0.25rem;
+    text-align: left;
+  }
+
+  .game-over-summary__player {
+    text-align: left;
   }
 }

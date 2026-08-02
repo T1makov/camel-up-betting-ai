@@ -107,6 +107,18 @@ class CamelUp:
             print(self)
             curr_player = (curr_player + 1) % len(self.players)
 
+    def get_winning_players(self) -> list[Player]:
+        """Return every player tied for the highest coin total."""
+        if not self.players:
+            return []
+
+        highest_total = max(player.money for player in self.players)
+        return [
+            player
+            for player in self.players
+            if player.money == highest_total
+        ]
+
     def process_leg_payouts(self):
         """Process payouts for the end of a leg.
 

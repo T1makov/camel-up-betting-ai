@@ -26,6 +26,8 @@ class GameSession:
     current_player: int = 0
     leg: int = 1
     status: str = "playing"
+    race_winner: str | None = None
+    winning_players: list[str] = field(default_factory=list)
     log: list[str] = field(
         default_factory=lambda: [
             "The caravan is ready. The first leg begins!"
@@ -117,44 +119,50 @@ class GameService:
             return self._serialize(game_id, session)
 
     def get_advice(self, game_id: str) -> dict[str, Any]:
-        session = self._get_session(game_id)
-        game = session.game
-        probabilities = game.ai.run_enumerative_analysis()
+        with self._lock:
+            session = self._get_session(game_id)
+            self._require_playing(session)
 
-        advice: list[dict[str, Any]] = []
+            game = session.game
+            probabilities = game.ai.run_enumerative_analysis()
 
-        for color, tickets in game.board.ticket_tents.items():
-            if not tickets:
-                continue
+            advice: list[dict[str, Any]] = []
 
-            ticket_value = tickets[0]
-            probability_first, probability_second = probabilities[color]
+            for color, tickets in game.board.ticket_tents.items():
+                if not tickets:
+                    continue
 
-            advice.append(
-                {
-                    "color": color,
-                    "colorName": COLOR_NAMES[color],
-                    "value": ticket_value,
-                    "probabilityFirst": probability_first,
-                    "probabilitySecond": probability_second,
-                    "expectedValue": game.ai.get_ticket_EV(
-                        ticket_value,
-                        probability_first,
-                        probability_second,
-                    ),
-                }
+                ticket_value = tickets[0]
+                probability_first, probability_second = probabilities[color]
+
+                advice.append(
+                    {
+                        "color": color,
+                        "colorName": COLOR_NAMES[color],
+                        "value": ticket_value,
+                        "probabilityFirst": probability_first,
+                        "probabilitySecond": probability_second,
+                        "expectedValue": game.ai.get_ticket_EV(
+                            ticket_value,
+                            probability_first,
+                            probability_second,
+                        ),
+                    }
+                )
+
+            advice.sort(
+                key=lambda item: item["expectedValue"],
+                reverse=True,
             )
 
-        advice.sort(
-            key=lambda item: item["expectedValue"],
-            reverse=True,
-        )
-
-        return {"advice": advice}
+            return {"advice": advice}
 
     def start_next_leg(self, game_id: str) -> dict[str, Any]:
         with self._lock:
             session = self._get_session(game_id)
+
+            if session.status == "finished":
+                raise RuntimeError("The race has already finished.")
 
             if session.status != "leg_complete":
                 raise RuntimeError(
@@ -185,6 +193,31 @@ class GameService:
 
     def _advance_turn(self, session: GameSession) -> None:
         game = session.game
+
+        if game.board.is_race_finished():
+            first, second = game.process_leg_payouts()
+            session.race_winner = first
+            session.winning_players = [
+                player.name
+                for player in game.get_winning_players()
+            ]
+            session.status = "finished"
+
+            session.log.append(
+                f"The race is over: {COLOR_NAMES[first]} wins, "
+                f"with {COLOR_NAMES[second]} in second."
+            )
+
+            player_names = ", ".join(session.winning_players)
+            highest_total = max(
+                player.money
+                for player in game.players
+            )
+            session.log.append(
+                f"Game winner: {player_names} "
+                f"with {highest_total} coins."
+            )
+            return
 
         if game.board.is_leg_finished():
             first, second = game.process_leg_payouts()
@@ -217,6 +250,8 @@ class GameService:
             "leg": session.leg,
             "track": board.track,
             "rankings": rankings,
+            "raceWinner": session.race_winner,
+            "winningPlayers": session.winning_players,
             "players": [
                 {
                     "name": player.name,
@@ -246,6 +281,6 @@ class GameService:
                 "aiAdvice": True,
                 "raceBetting": False,
                 "spectatorTiles": False,
-                "fullRace": False,
+                "fullRace": True,
             },
         }

@@ -1,3 +1,4 @@
+
 import random
 from colorama import Back, Style
 
@@ -12,6 +13,8 @@ class Board:
         self.TRACK_LENGTH = 16
         self.STYLES = STYLES
         self.track = [[] for _ in range(self.TRACK_LENGTH)]
+        self.race_finished = False
+        self.race_winner: str | None = None
         self.place_camels()
         self.pyramid = Pyramid(STYLES)
         self.ticket_tents = {
@@ -34,7 +37,7 @@ class Board:
             self.track[0].append(camel) ## put the camel on the track
             available_camels.remove(camel) ##remove the camel from the list of avaiable_camels
     def move_camel(self, die: tuple[str, int]):
-        if die == ("", 0):
+        if die == ("", 0) or self.race_finished:
             return
 
         moving_list = []
@@ -52,10 +55,17 @@ class Board:
         for camel in moving_list:
             self.track[current_location].remove(camel)
 
-        new_location = min(current_location + die[1], self.TRACK_LENGTH - 1)
+        destination = current_location + die[1]
+        crossed_finish = destination >= self.TRACK_LENGTH
+        new_location = min(destination, self.TRACK_LENGTH - 1)
 
         for camel in moving_list:
             self.track[new_location].append(camel)
+
+        if crossed_finish:
+            self.race_finished = True
+            rankings = self.get_rankings()
+            self.race_winner = rankings[0] if rankings else die[0]
     def roll_die(self):
         '''Shakes the pyramid and places the rolled die on the next dice tent
             If the pyramid is empty, returns a die with color "" and value 0.
@@ -93,6 +103,14 @@ class Board:
         if len(self.dice_tents) == len(self.STYLES):
             return True
         return False
+
+    def is_race_finished(self):
+        '''A race finishes as soon as a camel reaches or crosses the finish line.
+
+            Returns:
+                bool - True once the race has finished, False otherwise
+        '''
+        return self.race_finished
 
     def get_rankings(self):
         '''Returns the first and second place camels as a tuple of strings.

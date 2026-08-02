@@ -1,6 +1,3 @@
-import { DieFace } from "../components/dice/DieFace";
-import { BettingPanel } from "../components/betting/BettingPanel";
-import { PlayerBetTickets } from "../components/player/PlayerBetTickets";
 import {
     useCallback,
     useEffect,
@@ -15,12 +12,23 @@ import {
     rollDie,
     startNextLeg,
   } from "../api/client";
+  import { BettingPanel } from "../components/betting/BettingPanel";
   import { RaceBoard } from "../components/board/RaceBoard";
+  import { DieFace } from "../components/dice/DieFace";
+  import { PlayerBetTickets } from "../components/player/PlayerBetTickets";
   import type {
     AdviceItem,
+    CamelColor,
     GameState,
   } from "../types/game";
-
+  
+  const CAMEL_NAMES: Record<CamelColor, string> = {
+    r: "Red",
+    b: "Blue",
+    g: "Green",
+    y: "Yellow",
+    p: "Purple",
+  };
   
   export function GamePage() {
     const { gameId } = useParams<{ gameId: string }>();
@@ -111,7 +119,10 @@ import {
       return (
         <main className="status-page">
           <h1>Game unavailable</h1>
-          <p>{error ?? "This game could not be found."}</p>
+  
+          <p>
+            {error ?? "This game could not be found."}
+          </p>
   
           <Link className="primary-button" to="/setup">
             Create another game
@@ -121,12 +132,19 @@ import {
     }
   
     const currentPlayer = game.players[game.currentPlayer];
+    const isFinished = game.status === "finished";
+    const playerWinnerText =
+      game.winningPlayers.length > 1
+        ? `${game.winningPlayers.join(" and ")} tie`
+        : `${game.winningPlayers[0] ?? "No player"} wins`;
   
     return (
       <main className="game-page">
         <header className="game-header">
           <div>
-            <p className="eyebrow">Leg {game.leg}</p>
+            <p className="eyebrow">
+              {isFinished ? "Final results" : `Leg ${game.leg}`}
+            </p>
             <h1>Camel Up Strategy Lab</h1>
           </div>
   
@@ -144,126 +162,189 @@ import {
         <section className="game-grid">
           <div className="game-main-column">
             <section className="panel turn-panel">
-              <p className="eyebrow">Current turn</p>
-              <h2>{currentPlayer.name}</h2>
+              <div className="turn-panel__layout">
+                <div className="turn-panel__player">
+                  <p className="eyebrow">
+                    {isFinished ? "Game over" : "Current turn"}
+                  </p>
   
-              <p>
-                {currentPlayer.money} coins ·{" "}
-                {currentPlayer.bets.length} tickets
-              </p>
+                  <h2>
+                    {isFinished
+                      ? playerWinnerText
+                      : currentPlayer.name}
+                  </h2>
   
-              {game.status === "playing" ? (
-                <div className="turn-actions">
-                  <button
-                    className="primary-button"
-                    type="button"
-                    disabled={isActing}
-                    onClick={() =>
-                      void performAction(() => rollDie(gameId))
-                    }
-                  >
-                    Roll from pyramid
-                  </button>
-  
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    disabled={isActing}
-                    onClick={() => void handleAdvice()}
-                  >
-                    Analyze bets
-                  </button>
+                  <p>
+                    {isFinished
+                      ? "Final coin totals are shown in the player panel."
+                      : `${currentPlayer.money} coins · ${currentPlayer.bets.length} tickets`}
+                  </p>
                 </div>
-              ) : (
-                <button
-                  className="primary-button"
-                  type="button"
-                  disabled={isActing}
-                  onClick={() =>
-                    void performAction(() =>
-                      startNextLeg(gameId),
-                    )
-                  }
-                >
-                  Start leg {game.leg + 1}
-                </button>
-              )}
+  
+                <div className="turn-panel__analysis">
+                  {isFinished ? (
+                    <div className="game-over-summary">
+                      <span className="game-over-summary__label">
+                        Race winner
+                      </span>
+  
+                      <strong
+                        className={
+                          game.raceWinner
+                            ? `game-over-summary__camel camel-${game.raceWinner}`
+                            : "game-over-summary__camel"
+                        }
+                      >
+                        {game.raceWinner
+                          ? `${CAMEL_NAMES[game.raceWinner]} camel`
+                          : "Race complete"}
+                      </strong>
+  
+                      <span className="game-over-summary__player">
+                        {playerWinnerText}
+                      </span>
+                    </div>
+                  ) : advice.length > 0 ? (
+                    <>
+                      <div className="turn-panel__analysis-heading">
+                        <strong>Bet analysis</strong>
+                        <span>Higher EV is better</span>
+                      </div>
+  
+                      <div className="advice-list">
+                        {advice.map((item) => (
+                          <article
+                            className={`advice-row advice-row--${item.color}`}
+                            key={item.color}
+                          >
+                            <strong>{item.colorName}</strong>
+  
+                            <span>
+                              {(
+                                item.probabilityFirst * 100
+                              ).toFixed(1)}
+                              % first
+                            </span>
+  
+                            <span>
+                              EV {item.expectedValue.toFixed(2)}
+                            </span>
+                          </article>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+  
+                {game.status === "playing" ? (
+                  <div className="turn-actions">
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={isActing}
+                      onClick={() =>
+                        void performAction(() =>
+                          rollDie(gameId),
+                        )
+                      }
+                    >
+                      Roll from pyramid
+                    </button>
+  
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      disabled={isActing}
+                      onClick={() => void handleAdvice()}
+                    >
+                      {isActing ? "Calculating…" : "Analyze bets"}
+                    </button>
+                  </div>
+                ) : game.status === "leg_complete" ? (
+                  <div className="turn-actions">
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={isActing}
+                      onClick={() =>
+                        void performAction(() =>
+                          startNextLeg(gameId),
+                        )
+                      }
+                    >
+                      Start leg {game.leg + 1}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="turn-actions">
+                    <Link className="primary-button" to="/setup">
+                      New game
+                    </Link>
+                  </div>
+                )}
+              </div>
             </section>
   
             <RaceBoard track={game.track} />
-
+  
             <BettingPanel
-            tickets={game.tickets}
-            disabled={isActing || game.status !== "playing"}
-            onBet={(color) =>
+              tickets={game.tickets}
+              disabled={
+                isActing || game.status !== "playing"
+              }
+              onBet={(color) =>
                 void performAction(() =>
-                placeBet(gameId, color),
+                  placeBet(gameId, color),
                 )
-            }
+              }
             />
-  
-            {advice.length > 0 && (
-              <section className="panel">
-                <p className="eyebrow">Probability engine</p>
-                <h2>Bet analysis</h2>
-  
-                <div className="advice-list">
-                  {advice.map((item) => (
-                    <article
-                      className="advice-row"
-                      key={item.color}
-                    >
-                      <strong>{item.colorName}</strong>
-  
-                      <span>
-                        {(item.probabilityFirst * 100).toFixed(1)}%
-                        first
-                      </span>
-  
-                      <span>
-                        EV {item.expectedValue.toFixed(2)}
-                      </span>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            )}
           </div>
   
           <aside className="game-sidebar">
             <section className="panel">
-              <p className="eyebrow">Players</p>
+              <p className="eyebrow">
+                {isFinished ? "Final scores" : "Players"}
+              </p>
   
               <div className="player-cards">
                 {game.players.map((player, index) => (
                   <article
-                  className={
-                    index === game.currentPlayer
-                      ? "player-card active-player"
-                      : "player-card"
-                  }
-                  key={`${player.name}-${index}`}
-                >
-                  <div className="player-card__header">
-                    <div className="player-card__identity">
-                      <strong>{player.name}</strong>
-                
-                      <span>
-                        {index === game.currentPlayer
-                          ? "Current turn"
-                          : `${player.bets.length} ${
-                              player.bets.length === 1 ? "ticket" : "tickets"
-                            }`}
-                      </span>
+                    className={
+                      !isFinished &&
+                      index === game.currentPlayer
+                        ? "player-card active-player"
+                        : "player-card"
+                    }
+                    key={`${player.name}-${index}`}
+                  >
+                    <div className="player-card__header">
+                      <div className="player-card__identity">
+                        <strong>{player.name}</strong>
+  
+                        <span>
+                          {isFinished
+                            ? game.winningPlayers.includes(
+                                player.name,
+                              )
+                              ? "Game winner"
+                              : "Final score"
+                            : index === game.currentPlayer
+                              ? "Current turn"
+                              : `${player.bets.length} ${
+                                  player.bets.length === 1
+                                    ? "ticket"
+                                    : "tickets"
+                                }`}
+                        </span>
+                      </div>
+  
+                      <strong className="player-card__money">
+                        {player.money}¢
+                      </strong>
                     </div>
-                
-                    <strong className="player-card__money">
-                      {player.money}¢
-                    </strong>
-                  </div>
-                
-                  <PlayerBetTickets bets={player.bets} />
-                </article>
+  
+                    <PlayerBetTickets bets={player.bets} />
+                  </article>
                 ))}
               </div>
             </section>
@@ -279,11 +360,11 @@ import {
                 <div className="dice-list">
                   {game.rolledDice.map((die, index) => (
                     <DieFace
-                        color={die.color}
-                        value={die.value}
-                        key={`${die.color}-${index}`}
+                      color={die.color}
+                      value={die.value}
+                      key={`${die.color}-${index}`}
                     />
-                    ))}
+                  ))}
                 </div>
               )}
             </section>
@@ -292,11 +373,13 @@ import {
               <p className="eyebrow">Game log</p>
   
               <ol className="game-log">
-                {[...game.log].reverse().map((entry, index) => (
-                  <li key={`${entry}-${index}`}>
-                    {entry}
-                  </li>
-                ))}
+                {[...game.log]
+                  .reverse()
+                  .map((entry, index) => (
+                    <li key={`${entry}-${index}`}>
+                      {entry}
+                    </li>
+                  ))}
               </ol>
             </section>
           </aside>
