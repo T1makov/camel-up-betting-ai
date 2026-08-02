@@ -64,6 +64,10 @@ import {
     nextGame: GameState;
     summary: LegPayoutSummary;
   }
+
+  interface PendingGameOverAnimation {
+    nextGame: GameState;
+  }
   
   type DiceOverlayPhase =
     | "tumbling"
@@ -73,6 +77,11 @@ import {
   type PayoutOverlayPhase =
     | "intro"
     | "details"
+    | "exiting";
+
+  type GameOverOverlayPhase =
+    | "intro"
+    | "ready"
     | "exiting";
 
   function formatSignedAmount(value: number): string {
@@ -119,6 +128,16 @@ import {
       useState<PendingPayoutAnimation | null>(null);
     const [payoutOverlayPhase, setPayoutOverlayPhase] =
       useState<PayoutOverlayPhase | null>(null);
+    const [pendingGameOver, setPendingGameOver] =
+      useState<PendingGameOverAnimation | null>(null);
+    const [
+      gameOverOverlayPhase,
+      setGameOverOverlayPhase,
+    ] = useState<GameOverOverlayPhase | null>(null);
+    const [
+      displayedWinnerCoins,
+      setDisplayedWinnerCoins,
+    ] = useState(0);
   
     const rollSequence = useRef(0);
     const betSequence = useRef(0);
@@ -236,7 +255,8 @@ import {
         queuedRoll ||
         pendingRoll ||
         pendingBet ||
-        pendingPayout
+        pendingPayout ||
+        pendingGameOver
       ) {
         return;
       }
@@ -354,9 +374,24 @@ import {
       }
 
       const completeTimer = window.setTimeout(() => {
-        setGame(pendingPayout.nextGame);
+        const completedGame = pendingPayout.nextGame;
+
+        setGame(completedGame);
         setPendingPayout(null);
         setPayoutOverlayPhase(null);
+
+        if (
+          completedGame.status === "finished" &&
+          completedGame.raceWinner
+        ) {
+          setDisplayedWinnerCoins(0);
+          setPendingGameOver({
+            nextGame: completedGame,
+          });
+          setGameOverOverlayPhase("intro");
+          return;
+        }
+
         setIsActing(false);
       }, reducedMotion ? 0 : 260);
 
@@ -374,6 +409,128 @@ import {
       }
 
       setPayoutOverlayPhase("exiting");
+    }
+
+    useEffect(() => {
+      if (!pendingGameOver) {
+        return;
+      }
+
+      const winnerTotals =
+        pendingGameOver.nextGame.players
+          .filter((player) =>
+            pendingGameOver.nextGame.winningPlayers.includes(
+              player.name,
+            ),
+          )
+          .map((player) => player.money);
+      const finalCoinTotal =
+        winnerTotals.length > 0
+          ? Math.max(...winnerTotals)
+          : 0;
+      const reducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      if (reducedMotion) {
+        setDisplayedWinnerCoins(finalCoinTotal);
+        return;
+      }
+
+      const delay = 320;
+      const duration = 1050;
+      let animationFrame = 0;
+      let startTime: number | null = null;
+
+      const updateCount = (timestamp: number) => {
+        if (startTime === null) {
+          startTime = timestamp;
+        }
+
+        const elapsed = timestamp - startTime;
+
+        if (elapsed < delay) {
+          animationFrame =
+            window.requestAnimationFrame(updateCount);
+          return;
+        }
+
+        const progress = Math.min(
+          (elapsed - delay) / duration,
+          1,
+        );
+        const easedProgress =
+          1 - Math.pow(1 - progress, 3);
+
+        setDisplayedWinnerCoins(
+          Math.round(finalCoinTotal * easedProgress),
+        );
+
+        if (progress < 1) {
+          animationFrame =
+            window.requestAnimationFrame(updateCount);
+        }
+      };
+
+      animationFrame =
+        window.requestAnimationFrame(updateCount);
+
+      return () => {
+        window.cancelAnimationFrame(animationFrame);
+      };
+    }, [pendingGameOver]);
+
+    useEffect(() => {
+      if (
+        !pendingGameOver ||
+        !gameOverOverlayPhase
+      ) {
+        return;
+      }
+
+      const reducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      if (gameOverOverlayPhase === "intro") {
+        if (reducedMotion) {
+          setGameOverOverlayPhase("ready");
+          return;
+        }
+
+        const readyTimer = window.setTimeout(() => {
+          setGameOverOverlayPhase("ready");
+        }, 1450);
+
+        return () => {
+          window.clearTimeout(readyTimer);
+        };
+      }
+
+      if (gameOverOverlayPhase !== "exiting") {
+        return;
+      }
+
+      const completeTimer = window.setTimeout(() => {
+        setPendingGameOver(null);
+        setGameOverOverlayPhase(null);
+        setIsActing(false);
+      }, reducedMotion ? 0 : 260);
+
+      return () => {
+        window.clearTimeout(completeTimer);
+      };
+    }, [gameOverOverlayPhase, pendingGameOver]);
+
+    function dismissGameOverOverlay() {
+      if (
+        !pendingGameOver ||
+        gameOverOverlayPhase !== "ready"
+      ) {
+        return;
+      }
+
+      setGameOverOverlayPhase("exiting");
     }
   
     function getCurrentPlayerBetTarget(): ScreenRectangle | null {
@@ -568,7 +725,9 @@ import {
         ? "Moving…"
         : pendingPayout
           ? "Paying out…"
-          : "Roll from pyramid";
+          : pendingGameOver
+            ? "Celebrating…"
+            : "Roll from pyramid";
   
     return (
       <main className="game-page">
@@ -700,7 +859,8 @@ import {
                       !queuedRoll &&
                       !pendingRoll &&
                       !pendingBet &&
-                      !pendingPayout
+                      !pendingPayout &&
+                      !pendingGameOver
                         ? "Calculating…"
                         : "Analyze bets"}
                     </button>
@@ -1063,6 +1223,97 @@ import {
                     </button>
                   </footer>
                 )}
+              </section>
+            </div>
+          )}
+
+
+        {pendingGameOver &&
+          gameOverOverlayPhase &&
+          pendingGameOver.nextGame.raceWinner && (
+            <div
+              className={`game-over-celebration game-over-celebration--${gameOverOverlayPhase}`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="game-over-celebration-title"
+              aria-describedby="game-over-celebration-description"
+            >
+              <section className="game-over-celebration__card">
+                <div
+                  className="game-over-celebration__coin-burst"
+                  aria-hidden="true"
+                >
+                  {Array.from(
+                    { length: 12 },
+                    (_, index) => (
+                      <span
+                        key={index}
+                        style={
+                          {
+                            "--coin-angle":
+                              `${index * 30}deg`,
+                            "--coin-distance":
+                              `${78 + (index % 3) * 18}px`,
+                            "--coin-delay":
+                              `${260 + (index % 4) * 55}ms`,
+                          } as CSSProperties
+                        }
+                      />
+                    ),
+                  )}
+                </div>
+
+                <p className="eyebrow">
+                  {pendingGameOver.nextGame
+                    .winningPlayers.length > 1
+                    ? "Game winners"
+                    : "Game winner"}
+                </p>
+
+                <div
+                  className="game-over-celebration__camel"
+                  role="img"
+                  aria-label={`${CAMEL_NAMES[pendingGameOver.nextGame.raceWinner]} camel won the race`}
+                >
+                  <CamelPiece
+                    className="game-over-celebration__camel-icon"
+                    color={
+                      pendingGameOver.nextGame.raceWinner
+                    }
+                  />
+                </div>
+
+                <h2 id="game-over-celebration-title">
+                  {pendingGameOver.nextGame.winningPlayers.join(
+                    " & ",
+                  )}
+                </h2>
+
+                <p
+                  className="game-over-celebration__description"
+                  id="game-over-celebration-description"
+                >
+                  {pendingGameOver.nextGame
+                    .winningPlayers.length > 1
+                    ? "finish tied with"
+                    : "finishes with"}
+                </p>
+
+                <div className="game-over-celebration__total">
+                  <strong>{displayedWinnerCoins}</strong>
+                  <span>coins</span>
+                </div>
+
+                <button
+                  className="primary-button"
+                  type="button"
+                  disabled={
+                    gameOverOverlayPhase !== "ready"
+                  }
+                  onClick={dismissGameOverOverlay}
+                >
+                  View final results
+                </button>
               </section>
             </div>
           )}
