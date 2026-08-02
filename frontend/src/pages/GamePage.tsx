@@ -20,11 +20,13 @@ import {
   import { BettingPanel } from "../components/betting/BettingPanel";
   import { RaceBoard } from "../components/board/RaceBoard";
   import { DieFace } from "../components/dice/DieFace";
+  import { CamelPiece } from "../components/icons/CamelPiece";
   import { PlayerBetTickets } from "../components/player/PlayerBetTickets";
   import type {
     AdviceItem,
     CamelColor,
     GameState,
+    LegPayoutSummary,
   } from "../types/game";
   
   const CAMEL_NAMES: Record<CamelColor, string> = {
@@ -57,11 +59,39 @@ import {
     targetRect: ScreenRectangle;
     nextGame: GameState;
   }
+
+  interface PendingPayoutAnimation {
+    nextGame: GameState;
+    summary: LegPayoutSummary;
+  }
   
   type DiceOverlayPhase =
     | "tumbling"
     | "revealed"
     | "exiting";
+
+  type PayoutOverlayPhase =
+    | "intro"
+    | "details"
+    | "exiting";
+
+  function formatSignedAmount(value: number): string {
+    return value > 0 ? `+${value}` : `${value}`;
+  }
+
+  function getPayoutResultLabel(
+    result: "first" | "second" | "other",
+  ): string {
+    if (result === "first") {
+      return "1st";
+    }
+
+    if (result === "second") {
+      return "2nd";
+    }
+
+    return "Other";
+  }
   
   export function GamePage() {
     const { gameId } = useParams<{ gameId: string }>();
@@ -85,6 +115,10 @@ import {
       isBetSelectionInProgress,
       setIsBetSelectionInProgress,
     ] = useState(false);
+    const [pendingPayout, setPendingPayout] =
+      useState<PendingPayoutAnimation | null>(null);
+    const [payoutOverlayPhase, setPayoutOverlayPhase] =
+      useState<PayoutOverlayPhase | null>(null);
   
     const rollSequence = useRef(0);
     const betSequence = useRef(0);
@@ -201,7 +235,8 @@ import {
         isActing ||
         queuedRoll ||
         pendingRoll ||
-        pendingBet
+        pendingBet ||
+        pendingPayout
       ) {
         return;
       }
@@ -253,11 +288,93 @@ import {
       if (!pendingRoll) {
         return;
       }
-  
-      setGame(pendingRoll.nextGame);
+
+      const nextGame = pendingRoll.nextGame;
+      const payoutSummary = nextGame.payoutSummary;
+      const shouldShowPayouts =
+        payoutSummary !== null &&
+        (nextGame.status === "leg_complete" ||
+          nextGame.status === "finished");
+
+      if (shouldShowPayouts && game) {
+        /*
+         * Keep the completed camel movement visible underneath
+         * the payout overlay, but delay the money and ticket
+         * changes until the payout animation has finished.
+         */
+        setGame({
+          ...nextGame,
+          status: game.status,
+          currentPlayer: game.currentPlayer,
+          raceWinner: game.raceWinner,
+          winningPlayers: game.winningPlayers,
+          players: game.players,
+          log: game.log,
+        });
+        setPendingPayout({
+          nextGame,
+          summary: payoutSummary,
+        });
+        setPayoutOverlayPhase("intro");
+        setPendingRoll(null);
+        return;
+      }
+
+      setGame(nextGame);
       setPendingRoll(null);
       setIsActing(false);
-    }, [pendingRoll]);
+    }, [game, pendingRoll]);
+
+    useEffect(() => {
+      if (!pendingPayout || !payoutOverlayPhase) {
+        return;
+      }
+
+      const reducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      if (payoutOverlayPhase === "intro") {
+        if (reducedMotion) {
+          setPayoutOverlayPhase("details");
+          return;
+        }
+
+        const detailsTimer = window.setTimeout(() => {
+          setPayoutOverlayPhase("details");
+        }, 520);
+
+        return () => {
+          window.clearTimeout(detailsTimer);
+        };
+      }
+
+      if (payoutOverlayPhase !== "exiting") {
+        return;
+      }
+
+      const completeTimer = window.setTimeout(() => {
+        setGame(pendingPayout.nextGame);
+        setPendingPayout(null);
+        setPayoutOverlayPhase(null);
+        setIsActing(false);
+      }, reducedMotion ? 0 : 260);
+
+      return () => {
+        window.clearTimeout(completeTimer);
+      };
+    }, [pendingPayout, payoutOverlayPhase]);
+
+    function dismissPayoutOverlay() {
+      if (
+        !pendingPayout ||
+        payoutOverlayPhase !== "details"
+      ) {
+        return;
+      }
+
+      setPayoutOverlayPhase("exiting");
+    }
   
     function getCurrentPlayerBetTarget(): ScreenRectangle | null {
       const target = currentPlayerBetTargetRef.current;
@@ -449,7 +566,9 @@ import {
       ? "Rolling…"
       : pendingRoll
         ? "Moving…"
-        : "Roll from pyramid";
+        : pendingPayout
+          ? "Paying out…"
+          : "Roll from pyramid";
   
     return (
       <main className="game-page">
@@ -506,17 +625,22 @@ import {
                         Race winner
                       </span>
   
-                      <strong
-                        className={
-                          game.raceWinner
-                            ? `game-over-summary__camel camel-${game.raceWinner}`
-                            : "game-over-summary__camel"
-                        }
-                      >
-                        {game.raceWinner
-                          ? `${CAMEL_NAMES[game.raceWinner]} camel`
-                          : "Race complete"}
-                      </strong>
+                      {game.raceWinner ? (
+                        <div
+                          className="game-over-summary__camel"
+                          role="img"
+                          aria-label={`${CAMEL_NAMES[game.raceWinner]} camel won the race`}
+                        >
+                          <CamelPiece
+                            className="game-over-summary__camel-icon"
+                            color={game.raceWinner}
+                          />
+                        </div>
+                      ) : (
+                        <strong className="game-over-summary__camel">
+                          Race complete
+                        </strong>
+                      )}
   
                       <span className="game-over-summary__player">
                         {playerWinnerText}
@@ -575,7 +699,8 @@ import {
                       {isActing &&
                       !queuedRoll &&
                       !pendingRoll &&
-                      !pendingBet
+                      !pendingBet &&
+                      !pendingPayout
                         ? "Calculating…"
                         : "Analyze bets"}
                     </button>
@@ -769,6 +894,179 @@ import {
           </div>
         )}
   
+        {pendingPayout &&
+          payoutOverlayPhase && (
+            <div
+              className={`leg-payout-overlay leg-payout-overlay--${payoutOverlayPhase}`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="leg-payout-title"
+              aria-describedby={
+                payoutOverlayPhase !== "intro"
+                  ? "leg-payout-instruction"
+                  : undefined
+              }
+            >
+              <section className="leg-payout-card">
+                <div className="leg-payout-card__header">
+                  <div>
+                    <p className="eyebrow">
+                      Leg {pendingPayout.summary.leg} complete
+                    </p>
+                    <h2 id="leg-payout-title">
+                      Betting payouts
+                    </h2>
+                  </div>
+
+                  <span className="leg-payout-card__caption">
+                    Final standings
+                  </span>
+                </div>
+
+                <div className="leg-payout-leaders">
+                  <div className="leg-payout-leader">
+                    <span>1st place</span>
+
+                    <div
+                      className="leg-payout-leader__camel"
+                      role="img"
+                      aria-label={`${CAMEL_NAMES[pendingPayout.summary.first]} camel`}
+                    >
+                      <CamelPiece
+                        className="leg-payout-leader__camel-icon"
+                        color={pendingPayout.summary.first}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="leg-payout-leader">
+                    <span>2nd place</span>
+
+                    <div
+                      className="leg-payout-leader__camel"
+                      role="img"
+                      aria-label={`${CAMEL_NAMES[pendingPayout.summary.second]} camel`}
+                    >
+                      <CamelPiece
+                        className="leg-payout-leader__camel-icon"
+                        color={pendingPayout.summary.second}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="leg-payout-players">
+                  {pendingPayout.summary.players.map(
+                    (playerResult, playerIndex) => (
+                      <article
+                        className="leg-payout-player"
+                        key={playerResult.playerName}
+                        style={
+                          {
+                            "--payout-row-delay":
+                              `${playerIndex * 120}ms`,
+                            "--payout-total-delay":
+                              `${320 + playerIndex * 120}ms`,
+                          } as CSSProperties
+                        }
+                      >
+                        <div className="leg-payout-player__identity">
+                          <strong>
+                            {playerResult.playerName}
+                          </strong>
+
+                          <span>
+                            {playerResult.moneyBefore}¢ →{" "}
+                            {playerResult.moneyAfter}¢
+                          </span>
+                        </div>
+
+                        <div className="leg-payout-player__tickets">
+                          {playerResult.tickets.length ===
+                          0 ? (
+                            <span className="leg-payout-player__empty">
+                              No tickets
+                            </span>
+                          ) : (
+                            playerResult.tickets.map(
+                              (ticket, ticketIndex) => (
+                                <div
+                                  className={`leg-payout-ticket leg-payout-ticket--${ticket.color}`}
+                                  key={`${ticket.color}-${ticket.value}-${ticketIndex}`}
+                                  title={`${CAMEL_NAMES[ticket.color]} ${ticket.value}: ${getPayoutResultLabel(ticket.result)} ${formatSignedAmount(ticket.payout)}`}
+                                  style={
+                                    {
+                                      "--payout-ticket-delay":
+                                        `${180 + playerIndex * 120 + ticketIndex * 70}ms`,
+                                    } as CSSProperties
+                                  }
+                                >
+                                  <strong>
+                                    {ticket.value}
+                                  </strong>
+
+                                  <span>
+                                    {getPayoutResultLabel(
+                                      ticket.result,
+                                    )}
+                                  </span>
+
+                                  <em>
+                                    {formatSignedAmount(
+                                      ticket.payout,
+                                    )}
+                                  </em>
+                                </div>
+                              ),
+                            )
+                          )}
+                        </div>
+
+                        <strong
+                          className={[
+                            "leg-payout-player__total",
+                            playerResult.totalPayout > 0
+                              ? "leg-payout-player__total--positive"
+                              : "",
+                            playerResult.totalPayout < 0
+                              ? "leg-payout-player__total--negative"
+                              : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
+                          {formatSignedAmount(
+                            playerResult.totalPayout,
+                          )}
+                        </strong>
+                      </article>
+                    ),
+                  )}
+                </div>
+
+                {payoutOverlayPhase !== "intro" && (
+                  <footer className="leg-payout-card__footer">
+                    <p id="leg-payout-instruction">
+                      Review the results, then continue when
+                      you are ready.
+                    </p>
+
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={
+                        payoutOverlayPhase !== "details"
+                      }
+                      onClick={dismissPayoutOverlay}
+                    >
+                      Continue
+                    </button>
+                  </footer>
+                )}
+              </section>
+            </div>
+          )}
+
         {pendingBet && (
           <div
             className="bet-ticket-flight-layer"

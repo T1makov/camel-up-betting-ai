@@ -16,6 +16,33 @@ export interface RolledDie {
   value: number;
 }
 
+export type TicketPayoutResultType =
+  | "first"
+  | "second"
+  | "other";
+
+export interface TicketPayoutResult {
+  color: CamelColor;
+  value: number;
+  result: TicketPayoutResultType;
+  payout: number;
+}
+
+export interface PlayerPayoutResult {
+  playerName: string;
+  moneyBefore: number;
+  moneyAfter: number;
+  totalPayout: number;
+  tickets: TicketPayoutResult[];
+}
+
+export interface LegPayoutSummary {
+  leg: number;
+  first: CamelColor;
+  second: CamelColor;
+  players: PlayerPayoutResult[];
+}
+
 export interface GameCapabilities {
   legBetting: boolean;
   aiAdvice: boolean;
@@ -33,6 +60,7 @@ export interface GameState {
   rankings: CamelColor[];
   raceWinner: CamelColor | null;
   winningPlayers: string[];
+  payoutSummary: LegPayoutSummary | null;
   players: Player[];
   tickets: Record<CamelColor, number[]>;
   rolledDice: RolledDie[];

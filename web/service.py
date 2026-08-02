@@ -28,6 +28,7 @@ class GameSession:
     status: str = "playing"
     race_winner: str | None = None
     winning_players: list[str] = field(default_factory=list)
+    last_payout: dict[str, Any] | None = None
     log: list[str] = field(
         default_factory=lambda: [
             "The caravan is ready. The first leg begins!"
@@ -172,6 +173,7 @@ class GameService:
             session.game.board.reset_leg()
             session.leg += 1
             session.status = "playing"
+            session.last_payout = None
             session.log.append(f"Leg {session.leg} begins.")
 
             return self._serialize(game_id, session)
@@ -195,6 +197,9 @@ class GameService:
         game = session.game
 
         if game.board.is_race_finished():
+            session.last_payout = self._build_payout_summary(
+                session
+            )
             first, second = game.process_leg_payouts()
             session.race_winner = first
             session.winning_players = [
@@ -220,6 +225,9 @@ class GameService:
             return
 
         if game.board.is_leg_finished():
+            session.last_payout = self._build_payout_summary(
+                session
+            )
             first, second = game.process_leg_payouts()
 
             session.log.append(
@@ -233,6 +241,64 @@ class GameService:
         session.current_player = (
             session.current_player + 1
         ) % len(game.players)
+
+    @staticmethod
+    def _build_payout_summary(
+        session: GameSession,
+    ) -> dict[str, Any]:
+        game = session.game
+        rankings = game.board.get_rankings()
+
+        if rankings is None or len(rankings) < 2:
+            raise RuntimeError(
+                "The leg rankings could not be determined."
+            )
+
+        first, second = rankings
+        player_results: list[dict[str, Any]] = []
+
+        for player in game.players:
+            money_before = player.money
+            ticket_results: list[dict[str, Any]] = []
+            total_payout = 0
+
+            for color, value in player.bets:
+                if color == first:
+                    result = "first"
+                    payout = value
+                elif color == second:
+                    result = "second"
+                    payout = 1
+                else:
+                    result = "other"
+                    payout = -1
+
+                total_payout += payout
+                ticket_results.append(
+                    {
+                        "color": color,
+                        "value": value,
+                        "result": result,
+                        "payout": payout,
+                    }
+                )
+
+            player_results.append(
+                {
+                    "playerName": player.name,
+                    "moneyBefore": money_before,
+                    "moneyAfter": money_before + total_payout,
+                    "totalPayout": total_payout,
+                    "tickets": ticket_results,
+                }
+            )
+
+        return {
+            "leg": session.leg,
+            "first": first,
+            "second": second,
+            "players": player_results,
+        }
 
     @staticmethod
     def _serialize(
@@ -252,6 +318,7 @@ class GameService:
             "rankings": rankings,
             "raceWinner": session.race_winner,
             "winningPlayers": session.winning_players,
+            "payoutSummary": session.last_payout,
             "players": [
                 {
                     "name": player.name,

@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap");
 
 :root {
   font-family: "DM Sans", sans-serif;
@@ -77,10 +77,21 @@ p {
   margin-top: 0;
 }
 
+body,
+button,
+input,
+select,
+textarea,
 h1,
 h2,
 h3 {
-  font-family: "Playfair Display", serif;
+  font-family: "DM Sans", sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.025em;
 }
 
 .primary-button,
@@ -502,13 +513,21 @@ h3 {
 }
 
 .game-over-summary__camel {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  min-height: 58px;
+  place-items: center;
+  overflow: hidden;
   border-radius: 11px;
-  padding: 0.55rem 0.75rem;
+  padding: 0.3rem 0.7rem;
+  background: rgba(255, 255, 255, 0.42);
   font-size: 0.9rem;
+}
+
+.game-over-summary__camel-icon {
+  display: block;
+  width: min(104px, 100%);
+  height: auto;
+  max-height: 50px;
 }
 
 .game-over-summary__player {
@@ -1297,5 +1316,502 @@ h3 {
   .flying-bet-ticket__details,
   .flying-bet-ticket__final-value {
     animation: none !important;
+  }
+}
+
+
+/* Leg-complete payout animation */
+
+.leg-payout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: rgba(44, 36, 29, 0.42);
+  backdrop-filter: blur(3px) saturate(0.88);
+  animation: leg-payout-overlay-in 180ms ease-out both;
+}
+
+.leg-payout-overlay--exiting {
+  pointer-events: none;
+  animation: leg-payout-overlay-out 260ms ease-in both;
+}
+
+.leg-payout-card {
+  width: min(720px, 100%);
+  max-height: min(82vh, 760px);
+  overflow-y: auto;
+  border: 1px solid rgba(72, 52, 35, 0.14);
+  border-radius: 26px;
+  padding: clamp(1.15rem, 3vw, 1.8rem);
+  color: var(--ink);
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 250, 240, 0.98),
+      rgba(237, 245, 232, 0.98)
+    );
+  box-shadow:
+    0 32px 75px rgba(44, 36, 29, 0.32),
+    0 10px 26px rgba(44, 36, 29, 0.16);
+  transform-origin: center;
+  animation:
+    leg-payout-card-in 520ms
+    cubic-bezier(0.2, 0.85, 0.25, 1)
+    both;
+}
+
+.leg-payout-overlay--exiting .leg-payout-card {
+  animation:
+    leg-payout-card-out 240ms ease-in
+    both;
+}
+
+.leg-payout-card__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.leg-payout-card__header .eyebrow {
+  margin-bottom: 0.35rem;
+}
+
+.leg-payout-card__header h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+}
+
+.leg-payout-card__caption {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.leg-payout-leaders {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 1.15rem;
+}
+
+.leg-payout-leader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  padding: 0.65rem;
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.leg-payout-leader > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.leg-payout-leader__camel {
+  display: grid;
+  min-height: 72px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 0.35rem 0.7rem;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.leg-payout-leader__camel-icon {
+  display: block;
+  width: min(118px, 100%);
+  height: auto;
+  max-height: 62px;
+}
+
+.leg-payout-players {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.leg-payout-player {
+  display: grid;
+  grid-template-columns:
+    minmax(110px, 0.8fr)
+    minmax(0, 2fr)
+    62px;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 68px;
+  border: 1px solid rgba(72, 52, 35, 0.11);
+  border-radius: 16px;
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.52);
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.leg-payout-overlay--details
+  .leg-payout-player {
+  animation:
+    leg-payout-player-in 420ms
+    cubic-bezier(0.2, 0.8, 0.25, 1)
+    both;
+  animation-delay: var(--payout-row-delay);
+}
+
+.leg-payout-player__identity {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.leg-payout-player__identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leg-payout-player__identity span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.leg-payout-player__tickets {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.42rem;
+  overflow-x: auto;
+  padding: 0.15rem 0;
+}
+
+.leg-payout-player__empty {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.leg-payout-ticket {
+  position: relative;
+  display: grid;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  border-radius: 11px;
+  padding: 0.38rem;
+  color: white;
+  box-shadow: 0 6px 13px rgba(44, 36, 29, 0.14);
+  opacity: 0;
+  transform: translateY(8px) scale(0.9);
+}
+
+.leg-payout-overlay--details
+  .leg-payout-ticket {
+  animation:
+    leg-payout-ticket-in 360ms
+    cubic-bezier(0.2, 0.82, 0.3, 1)
+    both;
+  animation-delay: var(--payout-ticket-delay);
+}
+
+.leg-payout-ticket strong {
+  grid-row: 1 / -1;
+  font-size: 1.05rem;
+}
+
+.leg-payout-ticket span {
+  align-self: end;
+  font-size: 0.52rem;
+  font-style: normal;
+  font-weight: 800;
+  opacity: 0.82;
+  text-transform: uppercase;
+}
+
+.leg-payout-ticket em {
+  align-self: start;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  text-align: right;
+}
+
+.leg-payout-ticket--r {
+  background: #e53935;
+}
+
+.leg-payout-ticket--b {
+  background: #1976d2;
+}
+
+.leg-payout-ticket--g {
+  background: #43a047;
+}
+
+.leg-payout-ticket--y {
+  color: #3b2d0a;
+  background: #f9b719;
+}
+
+.leg-payout-ticket--p {
+  background: #7547b8;
+}
+
+.leg-payout-player__total {
+  display: grid;
+  min-width: 54px;
+  min-height: 42px;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--muted);
+  background: rgba(44, 36, 29, 0.06);
+  font-size: 1.05rem;
+  opacity: 0;
+  transform: scale(0.7);
+}
+
+.leg-payout-overlay--details
+  .leg-payout-player__total {
+  animation:
+    leg-payout-total-pop 420ms
+    cubic-bezier(0.18, 0.86, 0.3, 1.2)
+    both;
+  animation-delay: var(--payout-total-delay);
+}
+
+.leg-payout-overlay--exiting
+  .leg-payout-player,
+.leg-payout-overlay--exiting
+  .leg-payout-ticket,
+.leg-payout-overlay--exiting
+  .leg-payout-player__total {
+  opacity: 1;
+  transform: none;
+}
+
+.leg-payout-player__total--positive {
+  color: #18683b;
+  background: rgba(67, 160, 71, 0.15);
+}
+
+.leg-payout-player__total--negative {
+  color: #9b2f29;
+  background: rgba(229, 57, 53, 0.13);
+}
+
+
+.leg-payout-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid rgba(72, 52, 35, 0.12);
+  padding-top: 1rem;
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.leg-payout-overlay--details
+  .leg-payout-card__footer {
+  animation:
+    leg-payout-footer-in 300ms ease-out
+    380ms both;
+}
+
+.leg-payout-overlay--exiting
+  .leg-payout-card__footer {
+  opacity: 1;
+  transform: none;
+}
+
+.leg-payout-card__footer p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.leg-payout-card__footer .primary-button {
+  min-width: 118px;
+  flex-shrink: 0;
+}
+
+
+@keyframes leg-payout-footer-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes leg-payout-overlay-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes leg-payout-overlay-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes leg-payout-card-in {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.94);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.012);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes leg-payout-card-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+@keyframes leg-payout-player-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes leg-payout-ticket-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.06);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes leg-payout-total-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  68% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 620px) {
+  .leg-payout-overlay {
+    padding: 0.85rem;
+  }
+
+  .leg-payout-card {
+    max-height: 90vh;
+    border-radius: 21px;
+  }
+
+  .leg-payout-card__header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .leg-payout-leaders {
+    grid-template-columns: 1fr;
+  }
+
+  .leg-payout-player {
+    grid-template-columns:
+      minmax(95px, 0.75fr)
+      minmax(0, 1.5fr);
+  }
+
+  .leg-payout-player__total {
+    grid-column: 1 / -1;
+    justify-self: end;
+    margin-top: -0.25rem;
+  }
+
+  .leg-payout-card__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .leg-payout-card__footer .primary-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leg-payout-overlay,
+  .leg-payout-card,
+  .leg-payout-player,
+  .leg-payout-ticket,
+  .leg-payout-player__total,
+  .leg-payout-card__footer {
+    animation: none !important;
+  }
+
+  .leg-payout-card__footer {
+    opacity: 1;
+    transform: none;
   }
 }
