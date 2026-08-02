@@ -30,13 +30,18 @@ import {
     y: "Yellow",
     p: "Purple",
   };
-
+  
   interface PendingRollAnimation {
     id: number;
     color: CamelColor;
     steps: number;
     nextGame: GameState;
   }
+  
+  type DiceOverlayPhase =
+    | "tumbling"
+    | "revealed"
+    | "exiting";
   
   export function GamePage() {
     const { gameId } = useParams<{ gameId: string }>();
@@ -48,6 +53,13 @@ import {
     const [error, setError] = useState<string | null>(null);
     const [pendingRoll, setPendingRoll] =
       useState<PendingRollAnimation | null>(null);
+    const [queuedRoll, setQueuedRoll] =
+      useState<PendingRollAnimation | null>(null);
+    const [diceOverlayPhase, setDiceOverlayPhase] =
+      useState<DiceOverlayPhase | null>(null);
+    const [diceDisplayValue, setDiceDisplayValue] =
+      useState(1);
+  
     const rollSequence = useRef(0);
   
     const loadGame = useCallback(async () => {
@@ -75,6 +87,63 @@ import {
       void loadGame();
     }, [loadGame]);
   
+    useEffect(() => {
+      if (!queuedRoll) {
+        return;
+      }
+  
+      const movement = queuedRoll;
+      const reducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+  
+      const tumbleDuration = reducedMotion ? 80 : 820;
+      const revealDuration = reducedMotion ? 380 : 620;
+      const exitDuration = reducedMotion ? 80 : 180;
+  
+      let pipInterval: number | null = null;
+  
+      if (!reducedMotion) {
+        pipInterval = window.setInterval(() => {
+          setDiceDisplayValue((currentValue) =>
+            currentValue >= 3
+              ? 1
+              : currentValue + 1,
+          );
+        }, 95);
+      }
+  
+      const revealTimer = window.setTimeout(() => {
+        if (pipInterval !== null) {
+          window.clearInterval(pipInterval);
+          pipInterval = null;
+        }
+  
+        setDiceDisplayValue(movement.steps);
+        setDiceOverlayPhase("revealed");
+      }, tumbleDuration);
+  
+      const exitTimer = window.setTimeout(() => {
+        setDiceOverlayPhase("exiting");
+      }, tumbleDuration + revealDuration);
+  
+      const movementTimer = window.setTimeout(() => {
+        setDiceOverlayPhase(null);
+        setQueuedRoll(null);
+        setPendingRoll(movement);
+      }, tumbleDuration + revealDuration + exitDuration);
+  
+      return () => {
+        if (pipInterval !== null) {
+          window.clearInterval(pipInterval);
+        }
+  
+        window.clearTimeout(revealTimer);
+        window.clearTimeout(exitTimer);
+        window.clearTimeout(movementTimer);
+      };
+    }, [queuedRoll]);
+  
     async function performAction(
       action: () => Promise<GameState>,
     ) {
@@ -97,35 +166,49 @@ import {
     }
   
     async function handleRoll() {
-      if (!gameId || !game || isActing) {
+      if (
+        !gameId ||
+        !game ||
+        isActing ||
+        queuedRoll ||
+        pendingRoll
+      ) {
         return;
       }
-
+  
       setIsActing(true);
       setError(null);
       setAdvice([]);
-
+  
       try {
         const nextGame = await rollDie(gameId);
         const rolledDie =
           nextGame.rolledDice[
             nextGame.rolledDice.length - 1
           ];
-
+  
         if (!rolledDie) {
           setGame(nextGame);
           setIsActing(false);
           return;
         }
-
+  
         rollSequence.current += 1;
-
-        setPendingRoll({
+  
+        const movement: PendingRollAnimation = {
           id: rollSequence.current,
           color: rolledDie.color,
           steps: rolledDie.value,
           nextGame,
-        });
+        };
+  
+        setDiceDisplayValue(
+          rolledDie.value >= 3
+            ? 1
+            : rolledDie.value + 1,
+        );
+        setDiceOverlayPhase("tumbling");
+        setQueuedRoll(movement);
       } catch (caughtError) {
         setError(
           caughtError instanceof Error
@@ -135,17 +218,17 @@ import {
         setIsActing(false);
       }
     }
-
+  
     const completeRollAnimation = useCallback(() => {
       if (!pendingRoll) {
         return;
       }
-
+  
       setGame(pendingRoll.nextGame);
       setPendingRoll(null);
       setIsActing(false);
     }, [pendingRoll]);
-
+  
     async function handleAdvice() {
       if (!gameId) {
         return;
@@ -199,13 +282,22 @@ import {
         ? `${game.winningPlayers.join(" and ")} tie`
         : `${game.winningPlayers[0] ?? "No player"} wins`;
   
+    const rollButtonText = queuedRoll
+      ? "Rolling…"
+      : pendingRoll
+        ? "Moving…"
+        : "Roll from pyramid";
+  
     return (
       <main className="game-page">
         <header className="game-header">
           <div>
             <p className="eyebrow">
-              {isFinished ? "Final results" : `Leg ${game.leg}`}
+              {isFinished
+                ? "Final results"
+                : `Leg ${game.leg}`}
             </p>
+  
             <h1>Camel Up Strategy Lab</h1>
           </div>
   
@@ -226,7 +318,9 @@ import {
               <div className="turn-panel__layout">
                 <div className="turn-panel__player">
                   <p className="eyebrow">
-                    {isFinished ? "Game over" : "Current turn"}
+                    {isFinished
+                      ? "Game over"
+                      : "Current turn"}
                   </p>
   
                   <h2>
@@ -288,7 +382,8 @@ import {
                             </span>
   
                             <span>
-                              EV {item.expectedValue.toFixed(2)}
+                              EV{" "}
+                              {item.expectedValue.toFixed(2)}
                             </span>
                           </article>
                         ))}
@@ -305,9 +400,7 @@ import {
                       disabled={isActing}
                       onClick={() => void handleRoll()}
                     >
-                      {pendingRoll
-                        ? "Moving…"
-                        : "Roll from pyramid"}
+                      {rollButtonText}
                     </button>
   
                     <button
@@ -316,7 +409,11 @@ import {
                       disabled={isActing}
                       onClick={() => void handleAdvice()}
                     >
-                      {isActing ? "Calculating…" : "Analyze bets"}
+                      {isActing &&
+                      !queuedRoll &&
+                      !pendingRoll
+                        ? "Calculating…"
+                        : "Analyze bets"}
                     </button>
                   </div>
                 ) : game.status === "leg_complete" ? (
@@ -336,7 +433,10 @@ import {
                   </div>
                 ) : (
                   <div className="turn-actions">
-                    <Link className="primary-button" to="/setup">
+                    <Link
+                      className="primary-button"
+                      to="/setup"
+                    >
                       New game
                     </Link>
                   </div>
@@ -414,14 +514,18 @@ import {
                       </strong>
                     </div>
   
-                    <PlayerBetTickets bets={player.bets} />
+                    <PlayerBetTickets
+                      bets={player.bets}
+                    />
                   </article>
                 ))}
               </div>
             </section>
   
             <section className="panel">
-              <p className="eyebrow">Dice history</p>
+              <p className="eyebrow">
+                Dice history
+              </p>
   
               {game.rolledDice.length === 0 ? (
                 <p className="empty-state">
@@ -441,7 +545,9 @@ import {
             </section>
   
             <section className="panel">
-              <p className="eyebrow">Game log</p>
+              <p className="eyebrow">
+                Game log
+              </p>
   
               <ol className="game-log">
                 {[...game.log]
@@ -455,6 +561,37 @@ import {
             </section>
           </aside>
         </section>
+  
+        {queuedRoll && diceOverlayPhase && (
+          <div
+            className={`dice-roll-overlay dice-roll-overlay--${diceOverlayPhase}`}
+            role="status"
+            aria-live="polite"
+            aria-label={
+              diceOverlayPhase !== "tumbling"
+                ? `${CAMEL_NAMES[queuedRoll.color]} die rolled ${queuedRoll.steps}`
+                : "Rolling the die"
+            }
+          >
+            <div className="dice-roll-overlay__stage">
+              <div
+                className="dice-roll-overlay__die-shell"
+                aria-hidden="true"
+              >
+                <DieFace
+                  color={queuedRoll.color}
+                  value={diceDisplayValue}
+                />
+              </div>
+  
+              <p className="dice-roll-overlay__caption">
+                {diceOverlayPhase === "tumbling"
+                  ? "Rolling…"
+                  : `${CAMEL_NAMES[queuedRoll.color]} · ${queuedRoll.steps}`}
+              </p>
+            </div>
+          </div>
+        )}
       </main>
     );
   }
