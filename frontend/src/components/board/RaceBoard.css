@@ -124,10 +124,17 @@
   */
   .camel-stack--moving {
     --hop-x: calc(100% + var(--race-gap) + 4px);
+    --hop-y-end: calc(
+      (var(--start-base-size) - var(--landing-base-size)) *
+        var(--stack-step) +
+        var(--start-clearance) -
+        var(--landing-clearance)
+    );
   
     z-index: 20;
     bottom: calc(
-      5px + var(--start-base-size) * var(--stack-step)
+      5px + var(--start-base-size) * var(--stack-step) +
+        var(--start-clearance)
     );
     animation: camel-stack-hop 560ms
       cubic-bezier(0.35, 0, 0.2, 1) both;
@@ -140,23 +147,36 @@
   
   /*
   Only the bottom camel is split into animated visual layers.
-  Every layer uses the exact same approved SVG path. The path
-  data itself is never changed.
+  Every layer still uses the exact approved SVG path. The moving
+  leg copies overlap far into the body and the body is painted last,
+  which keeps the joints visually sealed throughout the hop.
   */
+  .camel-piece--leg-motion {
+    isolation: isolate;
+  }
+  
+  .camel-piece__body,
   .camel-piece__leg {
     transform-box: view-box;
+    will-change: transform;
+  }
+  
+  .camel-piece__body {
+    transform-origin: 424px 500px;
+    animation: camel-bottom-body-flex 560ms
+      cubic-bezier(0.35, 0, 0.2, 1) both;
   }
   
   .camel-piece__leg--rear {
-    transform-origin: 250px 445px;
-    animation: camel-rear-leg-wiggle 280ms
-      ease-in-out 2;
+    transform-origin: 248px 485px;
+    animation: camel-rear-leg-wiggle 560ms
+      cubic-bezier(0.35, 0, 0.2, 1) both;
   }
   
   .camel-piece__leg--front {
-    transform-origin: 555px 445px;
-    animation: camel-front-leg-wiggle 280ms
-      ease-in-out 2;
+    transform-origin: 558px 485px;
+    animation: camel-front-leg-wiggle 560ms
+      cubic-bezier(0.35, 0, 0.2, 1) both;
   }
   
   @keyframes camel-stack-hop {
@@ -164,26 +184,57 @@
       transform: translate3d(0, 0, 0);
     }
   
-    18% {
+    12% {
       transform: translate3d(
-        calc(var(--hop-x) * 0.12),
-        -18px,
+        calc(var(--hop-x) * 0.06),
+        calc(
+          var(--hop-y-end) * 0.06 -
+            var(--hop-clearance) * 0.2
+        ),
         0
       );
     }
   
-    48% {
+    28% {
+      transform: translate3d(
+        calc(var(--hop-x) * 0.22),
+        calc(
+          var(--hop-y-end) * 0.22 -
+            var(--hop-clearance) * 0.67
+        ),
+        0
+      );
+    }
+  
+    50% {
       transform: translate3d(
         calc(var(--hop-x) * 0.5),
-        -50px,
+        calc(
+          var(--hop-y-end) * 0.5 -
+            var(--hop-clearance)
+        ),
         0
       );
     }
   
-    76% {
+    72% {
       transform: translate3d(
-        calc(var(--hop-x) * 0.84),
-        -24px,
+        calc(var(--hop-x) * 0.78),
+        calc(
+          var(--hop-y-end) * 0.78 -
+            var(--hop-clearance) * 0.62
+        ),
+        0
+      );
+    }
+  
+    90% {
+      transform: translate3d(
+        calc(var(--hop-x) * 0.96),
+        calc(
+          var(--hop-y-end) * 0.96 -
+            var(--hop-clearance) * 0.14
+        ),
         0
       );
     }
@@ -191,49 +242,103 @@
     100% {
       transform: translate3d(
         var(--hop-x),
-        calc(
-          var(--base-difference) * var(--stack-step)
-        ),
+        var(--hop-y-end),
         0
       );
     }
   }
   
+  /*
+  The body compresses before takeoff, stretches slightly in the air,
+  and squashes on contact. At 0% and 100% it returns to the exact
+  approved silhouette.
+  */
+  @keyframes camel-bottom-body-flex {
+    0%,
+    100% {
+      transform: translateY(0) scaleX(1) scaleY(1);
+    }
+  
+    10% {
+      transform: translateY(10px) scaleX(1.025) scaleY(0.975);
+    }
+  
+    28% {
+      transform: translateY(-8px) scaleX(0.992) scaleY(1.018);
+    }
+  
+    50% {
+      transform: translateY(-13px) scaleX(0.985) scaleY(1.03);
+    }
+  
+    72% {
+      transform: translateY(-5px) scaleX(0.994) scaleY(1.012);
+    }
+  
+    91% {
+      transform: translateY(12px) scaleX(1.035) scaleY(0.965);
+    }
+  
+    96% {
+      transform: translateY(3px) scaleX(1.01) scaleY(0.99);
+    }
+  }
+  
+  /*
+  Smaller rotations plus a concealed overlap create a visible leg
+  wiggle without pulling either leg away from the torso.
+  */
   @keyframes camel-rear-leg-wiggle {
     0%,
     100% {
-      transform: rotate(0deg);
+      transform: rotate(0deg) translate(0, 0);
     }
   
-    22% {
-      transform: rotate(-7deg);
+    12% {
+      transform: rotate(-3deg) translate(-2px, 2px);
     }
   
-    48% {
-      transform: rotate(7deg);
+    30% {
+      transform: rotate(4.5deg) translate(3px, -2px);
     }
   
-    74% {
-      transform: rotate(-5deg);
+    50% {
+      transform: rotate(-4deg) translate(-2px, -1px);
+    }
+  
+    70% {
+      transform: rotate(3.5deg) translate(2px, 1px);
+    }
+  
+    90% {
+      transform: rotate(-1.5deg) translate(-1px, 2px);
     }
   }
   
   @keyframes camel-front-leg-wiggle {
     0%,
     100% {
-      transform: rotate(0deg);
+      transform: rotate(0deg) translate(0, 0);
     }
   
-    22% {
-      transform: rotate(7deg);
+    12% {
+      transform: rotate(3deg) translate(2px, 2px);
     }
   
-    48% {
-      transform: rotate(-7deg);
+    30% {
+      transform: rotate(-4.5deg) translate(-3px, -2px);
     }
   
-    74% {
-      transform: rotate(5deg);
+    50% {
+      transform: rotate(4deg) translate(2px, -1px);
+    }
+  
+    70% {
+      transform: rotate(-3.5deg) translate(-2px, 1px);
+    }
+  
+    90% {
+      transform: rotate(1.5deg) translate(1px, 2px);
     }
   }
   
@@ -264,6 +369,7 @@
   
   @media (prefers-reduced-motion: reduce) {
     .camel-stack--moving,
+    .camel-piece__body,
     .camel-piece__leg--rear,
     .camel-piece__leg--front {
       animation: none;

@@ -198,14 +198,48 @@ import {
       movement !== null &&
       currentPosition === nextPosition;
   
+    const isLastHop =
+      movement !== null &&
+      hopIndex >= movement.steps - 1;
+  
+    const currentObstacleSize = movement
+      ? movement.baseTrack[currentPosition].length
+      : 0;
+    const nextObstacleSize = movement
+      ? movement.baseTrack[nextPosition].length
+      : 0;
+  
+    /*
+     * The moving stack only truly lands on another stack at the
+     * final destination. An occupied intermediate space is treated
+     * as an obstacle: the moving stack stays slightly above it and
+     * immediately begins the next hop instead of visually merging.
+     */
     const startBaseSize = movement
       ? hopIndex === 0
         ? movement.sourceStackIndex
-        : movement.baseTrack[currentPosition].length
+        : currentObstacleSize
       : 0;
     const landingBaseSize = movement
-      ? movement.baseTrack[nextPosition].length
+      ? nextObstacleSize
       : 0;
+    const startClearance =
+      movement && hopIndex > 0 && currentObstacleSize > 0
+        ? 10
+        : 0;
+    const landingClearance =
+      movement && !isLastHop && nextObstacleSize > 0
+        ? 10
+        : 0;
+    const hopClearance = Math.min(
+      82,
+      52 +
+        Math.max(
+          currentObstacleSize,
+          nextObstacleSize,
+        ) *
+          7,
+    );
   
     return (
       <section
@@ -269,9 +303,14 @@ import {
                           movement.movingStack.length,
                         "--start-base-size":
                           startBaseSize,
-                        "--base-difference":
-                          startBaseSize -
+                        "--landing-base-size":
                           landingBaseSize,
+                        "--start-clearance":
+                          `${startClearance}px`,
+                        "--landing-clearance":
+                          `${landingClearance}px`,
+                        "--hop-clearance":
+                          `${hopClearance}px`,
                       } as CSSProperties
                     }
                   >

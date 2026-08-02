@@ -65,15 +65,20 @@ import {
         {animateLegs ? (
           <>
             <defs>
+              {/*
+                Each animated leg copy extends well into the body.
+                The body is drawn last and hides that overlap, which
+                prevents the background from opening up at the joints.
+              */}
               <clipPath
                 id={rearLegClipId}
                 clipPathUnits="userSpaceOnUse"
               >
                 <rect
-                  x="100"
-                  y="425"
-                  width="255"
-                  height="200"
+                  x="88"
+                  y="360"
+                  width="310"
+                  height="265"
                 />
               </clipPath>
   
@@ -82,13 +87,18 @@ import {
                 clipPathUnits="userSpaceOnUse"
               >
                 <rect
-                  x="435"
-                  y="425"
-                  width="245"
-                  height="200"
+                  x="400"
+                  y="360"
+                  width="320"
+                  height="265"
                 />
               </clipPath>
   
+              {/*
+                Only the lower portions are removed from the body layer.
+                The remaining upper-leg area forms a same-color cover over
+                the moving layers, so no white seam can appear.
+              */}
               <mask
                 id={bodyMaskId}
                 maskUnits="userSpaceOnUse"
@@ -107,28 +117,23 @@ import {
   
                 <rect
                   x="100"
-                  y="425"
-                  width="255"
-                  height="200"
+                  y="505"
+                  width="285"
+                  height="120"
                   fill="black"
                 />
   
                 <rect
-                  x="435"
-                  y="425"
-                  width="245"
-                  height="200"
+                  x="425"
+                  y="505"
+                  width="275"
+                  height="120"
                   fill="black"
                 />
               </mask>
             </defs>
   
-            <path
-              d={CAMEL_PATH}
-              fill="currentColor"
-              mask={`url(#${bodyMaskId})`}
-            />
-  
+            {/* Animated layers go behind the body overlap. */}
             <g className="camel-piece__leg camel-piece__leg--rear">
               <path
                 d={CAMEL_PATH}
@@ -142,6 +147,18 @@ import {
                 d={CAMEL_PATH}
                 fill="currentColor"
                 clipPath={`url(#${frontLegClipId})`}
+              />
+            </g>
+  
+            {/*
+              The approved path is unchanged. This top layer masks the
+              leg roots and receives only a subtle squash/stretch motion.
+            */}
+            <g className="camel-piece__body">
+              <path
+                d={CAMEL_PATH}
+                fill="currentColor"
+                mask={`url(#${bodyMaskId})`}
               />
             </g>
           </>
