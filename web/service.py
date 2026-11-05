@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from threading import Lock
 from typing import Any
 from uuid import uuid4
@@ -37,9 +38,24 @@ class GameSession:
 
 
 class GameService:
-    def __init__(self) -> None:
-        self._games: dict[str, GameSession] = {}
-        self._lock = Lock()
+    def __init__(self, redis_client=None) -> None:
+        redis_url = os.getenv("REDIS_URL") or os.getenv("KV_URL")
+        if redis_client is None and redis_url:
+            from redis import Redis
+
+            redis_client = Redis.from_url(
+                redis_url, socket_connect_timeout=5, socket_timeout=5
+            )
+        if redis_client is not None:
+            from web.storage import RedisGameStore
+
+            self._games = RedisGameStore(redis_client)
+            self._lock = self._games.lock()
+        else:
+            if os.getenv("VERCEL"):
+                raise RuntimeError("Connect Redis and set REDIS_URL or KV_URL.")
+            self._games: dict[str, GameSession] = {}
+            self._lock = Lock()
 
     def create_game(self, names: list[str]) -> dict[str, Any]:
         cleaned_names = [
@@ -56,7 +72,7 @@ class GameService:
             for name in cleaned_names
         ]
 
-        game_id = uuid4().hex[:10]
+        game_id = uuid4().hex
         session = GameSession(
             game=CamelUp(STYLES, players)
         )
@@ -88,6 +104,7 @@ class GameService:
 
             self._advance_turn(session)
 
+            self._games[game_id] = session
             return self._serialize(game_id, session)
 
     def place_bet(
@@ -117,6 +134,7 @@ class GameService:
 
             self._advance_turn(session)
 
+            self._games[game_id] = session
             return self._serialize(game_id, session)
 
     def get_advice(self, game_id: str) -> dict[str, Any]:
@@ -176,6 +194,7 @@ class GameService:
             session.last_payout = None
             session.log.append(f"Leg {session.leg} begins.")
 
+            self._games[game_id] = session
             return self._serialize(game_id, session)
 
     def _get_session(self, game_id: str) -> GameSession:

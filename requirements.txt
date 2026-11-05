@@ -2,3 +2,4 @@ colorama
 pytest
 fastapi
 uvicorn[standard]
+redis>=5,<7
