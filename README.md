@@ -227,6 +227,20 @@ http://localhost:5173
 
 Keep both the backend and frontend servers running while playing.
 
+## Deploy to Vercel
+
+Import the repository with the root directory set to `./`. The checked-in
+`vercel.json` builds the Vite frontend and deploys the FastAPI app as a Python
+function. Production API requests use the same origin under `/api`.
+
+Connect a Redis database through Vercel Storage and make its `REDIS_URL` or
+`KV_URL` available to the deployment. Game sessions use JSON storage and expire
+after seven days without a move. Moves are locked across backend instances.
+Production requires Redis; local development retains in-memory storage unless
+a Redis URL is set. No database credentials belong in the repository.
+
+The optional persistence tests require `fakeredis[lua]` in the test environment.
+
 ## API Endpoints
 
 | Method | Endpoint | Purpose |
@@ -298,7 +312,8 @@ npm run preview
 
 ## Current Limitations
 
-- Game sessions are stored in server memory and are lost when the backend restarts.
+- Local sessions use server memory unless Redis is configured; deployed sessions
+  persist in Redis and expire after seven days without a move.
 - The interface does not currently support remote real-time multiplayer.
 - Overall race winner/loser betting is not implemented.
 - Spectator tiles are not implemented.
